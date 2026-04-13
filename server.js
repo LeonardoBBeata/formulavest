@@ -599,5 +599,5 @@ res.status(500).json({error:"Erro ao corrigir redação"});
 // --------------------
 // Servidor
 // --------------------
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, ()=>console.log(`Servidor rodando em http://localhost:${PORT}`));
