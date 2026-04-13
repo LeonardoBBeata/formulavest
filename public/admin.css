@@ -1,0 +1,123 @@
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:#0f172a;
+    color:white;
+}
+
+.admin-wrapper{
+    display:flex;
+    height:100vh;
+}
+
+.admin-sidebar{
+    width:220px;
+    background:#1e293b;
+    padding:20px;
+    transition:0.3s;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+}
+
+.admin-sidebar.collapsed{
+    width:70px;
+}
+
+.admin-sidebar h2{
+    margin:0 0 20px 0;
+}
+
+.admin-sidebar ul{
+    list-style:none;
+    padding:0;
+}
+
+.admin-sidebar li{
+    padding:10px;
+    cursor:pointer;
+    border-radius:5px;
+}
+
+.admin-sidebar li.active,
+.admin-sidebar li:hover{
+    background:#334155;
+}
+
+#toggle-sidebar{
+    background:none;
+    border:none;
+    color:white;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.admin-main{
+    flex:1;
+    padding:30px;
+    overflow-y:auto;
+}
+
+.hidden{
+    display:none;
+}
+
+.admin-section{
+    margin-bottom:30px;
+}
+
+.section-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+input{
+    padding:8px;
+    margin:5px 0;
+    border-radius:5px;
+    border:none;
+}
+
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+.btn-logout{
+    background:#dc2626;
+    color:white;
+}
+
+.prova-card{
+    background:#1e293b;
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:10px;
+}
+
+.card-estat{
+    background:#1e293b;
+    padding:15px;
+    border-radius:8px;
+    margin:10px 0;
+}
+#lista-usuarios{
+    max-height:60vh;
+    overflow-y:auto;
+    margin-bottom:20px;
+}
+
+#lista-usuarios .prova-card{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+#lista-usuarios .prova-card p{
+    margin:0;
+    flex:1;
+    color:white;
+}

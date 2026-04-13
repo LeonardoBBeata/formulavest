@@ -1,0 +1,8 @@
+body { font-family: Arial, sans-serif; background:#f4f4f4; }
+.container { max-width:800px; margin:20px auto; padding:20px; background:#fff; border-radius:5px; }
+input, button { display:block; width:100%; margin:10px 0; padding:10px; font-size:16px; }
+button { cursor:pointer; }
+.hidden { display:none; }
+.card { border:1px solid #ccc; padding:10px; margin:10px 0; border-radius:4px; }
+.certa { background:#d4edda; }
+.errada { background:#f8d7da; }

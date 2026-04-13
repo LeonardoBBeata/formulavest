@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulado ENEM - SPA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Menu lateral -->
+        <aside class="sidebar">
+            <h2>Simulado ENEM</h2>
+            <nav>
+                <ul>
+                    <li data-section="gerar" class="active">Gerar Prova</li>
+                    <li data-section="enem">Simulado ENEM</li>
+                    <li data-section="redacao">Redação ENEM</li>
+                    <li data-section="dashboard">Dashboard</li>
+                    <li data-section="config">Configurações</li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Conteúdo principal -->
+        <main class="main-content">
+            <!-- Login / Registro -->
+            <section id="auth-section">
+                <h2>Login</h2>
+                <input type="text" id="login-username" placeholder="Usuário">
+                <input type="password" id="login-senha" placeholder="Senha">
+                <button id="login-btn">Login</button>
+                <p>Não tem conta? <a href="#" id="show-register">Registre-se</a></p>
+
+                <div id="register-box" class="hidden">
+                    <h2>Registro</h2>
+                    <input type="text" id="reg-username" placeholder="Usuário">
+                    <input type="password" id="reg-senha" placeholder="Senha">
+                    <button id="register-btn">Registrar</button>
+                    <p>Já tem conta? <a href="#" id="show-login">Login</a></p>
+                </div>
+            </section>
+
+            <!-- Gerar Prova -->
+            <section id="gerar" class="section hidden">
+                <h2>Gerar Prova</h2>
+                <input type="text" id="faculdade" placeholder="Faculdade">
+                <input type="text" id="curso" placeholder="Curso">
+                <input type="number" id="quantidade" placeholder="Número de questões" min="1">
+                <button id="gerar-btn">Gerar Prova</button>
+                <p id="tempo-prova">Tempo: 0m 0s</p>
+
+                <div id="prova-container"></div>
+                <button id="finalizar-btn" class="hidden">Finalizar Prova</button>
+            </section>
+            <section id="enem" class="section hidden">
+                <h2>Simulado ENEM Completo</h2>
+
+                <p>
+                    Este modo gera uma prova completa estilo ENEM para treino.
+                    Tempo total: <strong>300 minutos</strong>
+                </p>
+
+
+                <button id="enem-btn">Gerar Simulado ENEM</button>
+
+                <p id="tempo-enem">Tempo: 300m 0s</p>
+
+                <div id="enem-container"></div>
+
+                <button id="finalizar-enem" class="hidden">Finalizar Prova</button>
+            </section>
+
+            <section id="redacao" class="section hidden">
+
+                <h2>Treino de Redação ENEM</h2>
+
+                <input type="text" id="tema-redacao" placeholder="Tema da redação">
+
+                <textarea id="texto-redacao" rows="15" placeholder="Digite sua redação aqui..."></textarea>
+
+                <button id="enviar-redacao">Enviar Redação</button>
+
+                <h3>Correção da IA</h3>
+
+                <div id="feedback-redacao"></div>
+
+            </section>
+            <!-- Dashboard -->
+            <section id="dashboard" class="section hidden">
+                <h2>📊 Painel do Aluno</h2>
+
+                <div class="dashboard-grid">
+
+                    <div class="card gradient">
+                        <h3>📚 Provas</h3>
+                        <p id="total-provas">0</p>
+                    </div>
+
+                    <div class="card gradient">
+                        <h3>🎯 Média</h3>
+                        <p id="media-acertos">0%</p>
+                    </div>
+
+                    <div class="card gradient">
+                        <h3>🏆 Melhor</h3>
+                        <p id="melhor-resultado">0%</p>
+                    </div>
+
+                    <div class="card gradient">
+                        <h3>⚡ Nível</h3>
+                        <p id="nivel">1</p>
+                    </div>
+
+                </div>
+
+                <div class="card">
+                    <h3>📈 Evolução</h3>
+                    <canvas id="graficoDesempenho"></canvas>
+                </div>
+
+                <div class="card">
+                    <h3>🧠 Análise Inteligente</h3>
+                    <div id="analise-ia"></div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Histórico</h3>
+                    <div id="resultado"></div>
+                </div>
+            </section>
+
+            <!-- Configurações -->
+            <section id="config" class="section hidden">
+                <h2>Configurações</h2>
+                <button id="logout-btn" class="btn-red">Logout</button>
+                <div class="config-item">
+                    <label for="tema-toggle">Tema escuro</label>
+                    <input type="checkbox" id="tema-toggle">
+                </div>
+                <div class="config-item">
+                    <label>Número de questões padrão:</label>
+                    <input type="number" id="default-quantidade" min="1" value="10">
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

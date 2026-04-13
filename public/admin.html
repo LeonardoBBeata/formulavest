@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard</title>
+<link rel="stylesheet" href="admin.css">
+</head>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<body>
+
+<div class="admin-wrapper">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="admin-sidebar">
+        <h2 class="logo">ADMIN</h2>
+        <ul>
+            <li data-section="provas" class="active">📄 Provas</li>
+            <li data-section="usuarios">👤 Usuários</li>
+            <li data-section="estatisticas">📊 Estatísticas</li>
+        </ul>
+        <button id="toggle-sidebar">⬅</button>
+    </aside>
+
+    <!-- Conteúdo -->
+    <main class="admin-main">
+
+        <!-- Login -->
+        <div id="login-admin">
+            <h1>Login Administrativo</h1>
+            <input type="email" id="admin-email" placeholder="Email">
+            <input type="password" id="admin-senha" placeholder="Senha">
+            <button id="admin-login-btn">Entrar</button>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="admin-dashboard" class="hidden">
+
+            <!-- PROVAS -->
+            <section id="provas" class="admin-section">
+                <input type="text" id="filtro-usuario" placeholder="Filtrar por usuário">
+                
+                <div class="section-header">
+                    <h2>Provas Realizadas</h2>
+                    <button id="refresh-provas-btn">🔄 Atualizar</button>
+                </div>
+                <div id="provas-container"></div>
+            </section>
+
+            <!-- USUÁRIOS -->
+            <section id="usuarios" class="admin-section hidden">
+            
+                <h2>Criar Novo Usuário</h2>
+                <input type="text" id="novo-username" placeholder="Username">
+                <input type="password" id="novo-senha" placeholder="Senha">
+                <button id="criar-usuario-btn">Criar Usuário</button>
+                    <div id="lista-usuarios"></div>
+                <p id="msg-admin"></p>
+            </section>
+
+            <!-- ESTATÍSTICAS -->
+            <section id="estatisticas" class="admin-section hidden">
+                <h2>Estatísticas Globais</h2>
+                <div id="estatisticas-admin"></div>
+            </section>
+
+            <button id="admin-logout" class="btn-logout">Logout</button>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>
