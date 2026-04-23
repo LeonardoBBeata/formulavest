@@ -3,8 +3,10 @@
 // --------------------
 const API = "https://formulavest-2.onrender.com";
 
-const sections = document.querySelectorAll('.section');
-const menuItems = document.querySelectorAll('.sidebar nav ul li');
+// --------------------
+// HELPERS
+// --------------------
+const $ = (id) => document.getElementById(id);
 
 // --------------------
 // FETCH PADRÃO
@@ -22,12 +24,12 @@ async function apiFetch(path, options = {}) {
 
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error || "Erro na requisição");
+        if (!res.ok) throw new Error(data.error || "Erro na API");
 
         return data;
 
     } catch (err) {
-        console.error("API ERROR:", err.message);
+        console.error("API ERROR:", err);
         throw err;
     }
 }
@@ -35,137 +37,156 @@ async function apiFetch(path, options = {}) {
 // --------------------
 // NAVEGAÇÃO
 // --------------------
-menuItems.forEach(item => {
-    item.addEventListener('click', () => {
+function setupNavigation() {
+    const sections = document.querySelectorAll('.section');
+    const menuItems = document.querySelectorAll('.sidebar nav ul li');
 
-        menuItems.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
 
-        const target = item.dataset.section;
+            menuItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
 
-        sections.forEach(s =>
-            s.id === target
-                ? s.classList.remove('hidden')
-                : s.classList.add('hidden')
-        );
+            const target = item.dataset.section;
 
-        if (target === 'dashboard') carregarHistorico();
+            sections.forEach(s => {
+                s.classList.toggle('hidden', s.id !== target);
+            });
+
+            if (target === 'dashboard') carregarHistorico();
+        });
     });
-});
+}
 
 // --------------------
 // TEMA
 // --------------------
-const temaToggle = document.getElementById('tema-toggle');
+function setupTheme() {
+    const toggle = $('tema-toggle');
 
-if (localStorage.getItem('tema') === 'dark') {
-    document.body.classList.add('dark');
-    temaToggle.checked = true;
+    if (!toggle) return;
+
+    const temaSalvo = localStorage.getItem('tema');
+
+    if (temaSalvo === 'dark') {
+        document.body.classList.add('dark');
+        toggle.checked = true;
+    }
+
+    toggle.addEventListener('change', () => {
+        const dark = toggle.checked;
+        document.body.classList.toggle('dark', dark);
+        localStorage.setItem('tema', dark ? 'dark' : 'light');
+    });
 }
 
-temaToggle.addEventListener('change', () => {
-    if (temaToggle.checked) {
-        document.body.classList.add('dark');
-        localStorage.setItem('tema', 'dark');
-    } else {
-        document.body.classList.remove('dark');
-        localStorage.setItem('tema', 'light');
-    }
-});
-
 // --------------------
-// LOGIN / REGISTRO
+// AUTH
 // --------------------
-document.getElementById('show-register').onclick = () =>
-    document.getElementById('register-box').classList.remove('hidden');
+function setupAuth() {
 
-document.getElementById('show-login').onclick = () =>
-    document.getElementById('register-box').classList.add('hidden');
+    $('show-register')?.addEventListener('click', () =>
+        $('register-box').classList.remove('hidden')
+    );
 
-// REGISTRAR
-document.getElementById('register-btn').onclick = async () => {
-    try {
-        await apiFetch('/register', {
-            method: 'POST',
-            body: JSON.stringify({
-                username: reg_username.value,
-                senha: reg_senha.value
-            })
-        });
+    $('show-login')?.addEventListener('click', () =>
+        $('register-box').classList.add('hidden')
+    );
 
-        alert("Registrado com sucesso!");
-        document.getElementById('register-box').classList.add('hidden');
+    // REGISTRO
+    $('register-btn')?.addEventListener('click', async () => {
 
-    } catch (e) {
-        alert(e.message);
-    }
-};
+        const username = $('reg-username').value.trim();
+        const senha = $('reg-senha').value.trim();
 
-// LOGIN
-document.getElementById('login-btn').onclick = async () => {
-    try {
-        await apiFetch('/login', {
-            method: 'POST',
-            body: JSON.stringify({
-                username: login_username.value,
-                senha: login_senha.value
-            })
-        });
+        if (!username || !senha) return alert("Preencha tudo");
 
+        try {
+            await apiFetch('/register', {
+                method: 'POST',
+                body: JSON.stringify({ username, senha })
+            });
+
+            alert("Registrado com sucesso!");
+            $('register-box').classList.add('hidden');
+
+        } catch (e) {
+            alert(e.message);
+        }
+    });
+
+    // LOGIN
+    $('login-btn')?.addEventListener('click', async () => {
+
+        const username = $('login-username').value.trim();
+        const senha = $('login-senha').value.trim();
+
+        if (!username || !senha) return alert("Preencha tudo");
+
+        try {
+            await apiFetch('/login', {
+                method: 'POST',
+                body: JSON.stringify({ username, senha })
+            });
+
+            location.reload();
+
+        } catch (e) {
+            alert(e.message);
+        }
+    });
+
+    // LOGOUT
+    $('logout-btn')?.addEventListener('click', async () => {
+        await apiFetch('/logout', { method: 'POST' });
         location.reload();
-
-    } catch (e) {
-        alert(e.message);
-    }
-};
-
-// LOGOUT
-document.getElementById('logout-btn').onclick = async () => {
-    await apiFetch('/logout', { method: 'POST' });
-    location.reload();
-};
+    });
+}
 
 // --------------------
-// GERAR PROVA
+// PROVA NORMAL
 // --------------------
 let questoes = [];
-let cronometroInterval;
-let tempoGastoSegundos = 0;
+let cronometro;
 
-document.getElementById('gerar-btn').onclick = async () => {
+function setupProva() {
 
-    const faculdade = document.getElementById('faculdade').value;
-    const curso = document.getElementById('curso').value;
-    const quantidade = document.getElementById('quantidade').value || 10;
+    $('gerar-btn')?.addEventListener('click', async () => {
 
-    if (!faculdade || !curso) return alert("Preencha tudo!");
+        const faculdade = $('faculdade').value.trim();
+        const curso = $('curso').value.trim();
+        const quantidade = Number($('quantidade').value) || 10;
 
-    prova_container.innerHTML = "Gerando...";
+        if (!faculdade || !curso) return alert("Preencha os campos");
 
-    try {
-        const data = await apiFetch('/gerar-prova', {
-            method: 'POST',
-            body: JSON.stringify({ faculdade, curso, quantidade })
-        });
+        $('prova-container').innerHTML = "Gerando prova...";
 
-        if (!data.questoes) throw new Error("IA falhou");
+        try {
+            const data = await apiFetch('/gerar-prova', {
+                method: 'POST',
+                body: JSON.stringify({ faculdade, curso, quantidade })
+            });
 
-        questoes = data.questoes;
+            if (!data.questoes) throw new Error("Falha da IA");
 
-        exibirProva();
-        iniciarCronometro(questoes.length);
+            questoes = data.questoes;
 
-    } catch (e) {
-        prova_container.innerHTML = "";
-        alert(e.message);
-    }
-};
+            renderProva();
+            iniciarCronometro(quantidade);
 
-function exibirProva() {
-    prova_container.innerHTML = questoes.map((q, i) => `
+        } catch (e) {
+            $('prova-container').innerHTML = "";
+            alert(e.message);
+        }
+    });
+
+    $('finalizar-btn')?.addEventListener('click', finalizarProva);
+}
+
+function renderProva() {
+    $('prova-container').innerHTML = questoes.map((q, i) => `
         <div class="questao">
             <p><strong>Q${i + 1}</strong>: ${q.enunciado}</p>
-
             ${Object.entries(q.opcoes).map(([l, t]) => `
                 <label>
                     ${l}) ${t}
@@ -175,44 +196,31 @@ function exibirProva() {
         </div>
     `).join('');
 
-    document.getElementById('finalizar-btn').classList.remove('hidden');
+    $('finalizar-btn').classList.remove('hidden');
 }
 
-// --------------------
-// CRONÔMETRO
-// --------------------
 function iniciarCronometro(qtd) {
-    tempoGastoSegundos = qtd * 5 * 60;
+    let tempo = qtd * 5 * 60;
 
-    clearInterval(cronometroInterval);
+    clearInterval(cronometro);
 
-    cronometroInterval = setInterval(() => {
+    cronometro = setInterval(() => {
+        const min = Math.floor(tempo / 60);
+        const seg = tempo % 60;
 
-        const min = Math.floor(tempoGastoSegundos / 60);
-        const seg = tempoGastoSegundos % 60;
+        $('tempo-prova').textContent = `Tempo: ${min}m ${seg}s`;
 
-        document.getElementById('tempo-prova').textContent =
-            `Tempo restante: ${min}m ${seg}s`;
-
-        if (tempoGastoSegundos <= 0) {
-            clearInterval(cronometroInterval);
+        if (tempo-- <= 0) {
+            clearInterval(cronometro);
             alert("Tempo acabou!");
             finalizarProva();
         }
 
-        tempoGastoSegundos--;
-
     }, 1000);
 }
 
-// --------------------
-// FINALIZAR PROVA
-// --------------------
-document.getElementById('finalizar-btn').onclick = finalizarProva;
-
-function finalizarProva() {
-
-    clearInterval(cronometroInterval);
+async function finalizarProva() {
+    clearInterval(cronometro);
 
     const respostas = questoes.map((q, i) => {
         const marcada = document.querySelector(`input[name="q${i}"]:checked`);
@@ -225,48 +233,49 @@ function finalizarProva() {
         };
     });
 
-    apiFetch('/salvar-prova', {
-        method: 'POST',
-        body: JSON.stringify({
-            questoes: respostas,
-            tempo: 0
-        })
-    })
-    .then(() => {
+    try {
+        await apiFetch('/salvar-prova', {
+            method: 'POST',
+            body: JSON.stringify({ questoes: respostas, tempo: 0 })
+        });
+
         alert("Prova salva!");
         carregarHistorico();
-    })
-    .catch(e => alert(e.message));
+
+    } catch (e) {
+        alert(e.message);
+    }
 }
 
 // --------------------
-// ENEM COMPLETO
+// ENEM
 // --------------------
-let enemQuestoes = [];
+function setupEnem() {
 
-document.getElementById('enem-btn').onclick = async () => {
+    $('enem-btn')?.addEventListener('click', async () => {
 
-    enem_container.innerHTML = "Gerando ENEM...";
+        $('enem-container').innerHTML = "Gerando ENEM...";
 
-    try {
-        const data = await apiFetch('/gerar-enem', {
-            method: 'POST',
-            body: JSON.stringify({ quantidade: 90 })
-        });
+        try {
+            const data = await apiFetch('/gerar-enem', {
+                method: 'POST',
+                body: JSON.stringify({ quantidade: 90 })
+            });
 
-        enemQuestoes = data.questoes;
+            const questoes = data.questoes || [];
 
-        enem_container.innerHTML = enemQuestoes.map((q, i) => `
-            <div class="questao">
-                <p><strong>Q${i + 1}</strong>: ${q.enunciado}</p>
-            </div>
-        `).join('');
+            $('enem-container').innerHTML = questoes.map((q, i) => `
+                <div class="questao">
+                    <p><strong>Q${i + 1}</strong>: ${q.enunciado}</p>
+                </div>
+            `).join('');
 
-    } catch (e) {
-        enem_container.innerHTML = "";
-        alert(e.message);
-    }
-};
+        } catch (e) {
+            $('enem-container').innerHTML = "";
+            alert(e.message);
+        }
+    });
+}
 
 // --------------------
 // DASHBOARD
@@ -275,9 +284,17 @@ async function carregarHistorico() {
     try {
         const data = await apiFetch('/provas');
 
-        resultado.innerHTML = data.provas.map((p, i) => `
+        const provas = data.provas || [];
+
+        if (provas.length === 0) {
+            $('resultado').innerHTML = "Nenhuma prova";
+            return;
+        }
+
+        $('resultado').innerHTML = provas.map((p, i) => `
             <div class="prova-card">
                 <h4>Prova ${i + 1}</h4>
+                <p>${p.questoes.length} questões</p>
             </div>
         `).join('');
 
@@ -289,25 +306,42 @@ async function carregarHistorico() {
 // --------------------
 // REDAÇÃO
 // --------------------
-document.getElementById('enviar-redacao').onclick = async () => {
+function setupRedacao() {
 
-    const tema = tema_redacao.value;
-    const texto = texto_redacao.value;
+    $('enviar-redacao')?.addEventListener('click', async () => {
 
-    if (!tema || !texto) return alert("Preencha tudo");
+        const tema = $('tema-redacao').value.trim();
+        const texto = $('texto-redacao').value.trim();
 
-    try {
-        const data = await apiFetch('/corrigir-redacao', {
-            method: 'POST',
-            body: JSON.stringify({ tema, texto })
-        });
+        if (!tema || !texto) return alert("Preencha tudo");
 
-        feedback_redacao.innerHTML = `
-            <h3>Nota: ${data.nota}</h3>
-            <p>${data.feedback}</p>
-        `;
+        try {
+            const data = await apiFetch('/corrigir-redacao', {
+                method: 'POST',
+                body: JSON.stringify({ tema, texto })
+            });
 
-    } catch (e) {
-        alert(e.message);
-    }
-};
+            $('feedback-redacao').innerHTML = `
+                <h3>Nota: ${data.nota}</h3>
+                <p>${data.feedback}</p>
+            `;
+
+        } catch (e) {
+            alert(e.message);
+        }
+    });
+}
+
+// --------------------
+// INIT
+// --------------------
+function init() {
+    setupNavigation();
+    setupTheme();
+    setupAuth();
+    setupProva();
+    setupEnem();
+    setupRedacao();
+}
+
+document.addEventListener('DOMContentLoaded', init);
