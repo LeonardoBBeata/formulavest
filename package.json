@@ -21,4 +21,7 @@
     "sqlite3": "^5.1.7"
   },
   "description": ""
+},
+"engines": {
+  "node": ">=18"
 }
