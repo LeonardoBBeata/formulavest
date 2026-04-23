@@ -204,41 +204,70 @@ app.post('/logout',(req,res)=>{
 // --------------------
 app.post('/gerar-prova', userAuth, async (req,res)=>{
 
+try{
+
 if(req.session.provaAtiva)
 return res.status(400).json({error:"Finalize a prova atual"});
 
 const {faculdade,curso,quantidade} = req.body;
 
-const prompt = `Crie ${quantidade} questões ENEM para ${curso} em ${faculdade}`;
-
-try{
-
-const resp = await axios.post(
+const response = await axios.post(
 "https://router.huggingface.co/v1/chat/completions",
 {
 model:"deepseek-ai/DeepSeek-V3.2:fastest",
 messages:[
 {role:"system",content:"Especialista ENEM"},
-{role:"user",content:prompt}
+{role:"user",content:`Crie ${quantidade} questões ENEM para ${curso}`}
 ]
 },
 {
-headers:{Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`}
+headers:{
+Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+"Content-Type":"application/json"
+},
+timeout:60000
 }
 );
 
-const json = await parseJSONComCorrecao(resp.data.choices?.[0]?.message?.content);
+// 🔥 VALIDAÇÃO FORTE
+if(!response.data){
+console.error("Sem data:", response);
+return res.status(500).json({error:"Resposta vazia da API"});
+}
+
+const texto = response.data?.choices?.[0]?.message?.content;
+
+if(!texto){
+console.error("Resposta inválida:", response.data);
+return res.status(500).json({error:"IA não retornou conteúdo"});
+}
+
+// 🔥 parse seguro
+let json;
+
+try{
+json = await parseJSONComCorrecao(texto);
+}catch(e){
+console.error("Erro parse JSON:", texto);
+return res.status(500).json({error:"Erro ao processar JSON da IA"});
+}
 
 req.session.provaAtiva = true;
 
-res.json({questoes:json.questoes});
+res.json({questoes: json.questoes || []});
 
 }catch(err){
-res.status(500).json({error:"Erro IA"});
+
+console.error("ERRO GERAL:", err.response?.data || err.message);
+
+res.status(500).json({
+error:"Erro interno",
+detail: err.response?.data || err.message
+});
+
 }
 
 });
-
 // --------------------
 // GERAR ENEM COMPLETO
 // --------------------
