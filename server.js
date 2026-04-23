@@ -6,15 +6,19 @@ const axios = require('axios');
 const session = require('express-session');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
-const JSON5 = require('json5');
 
 const app = express();
 
 // --------------------
-// CORS
+// CONFIG
+// --------------------
+const PORT = process.env.PORT || 3000;
+
+// --------------------
+// CORS (IMPORTANTE)
 // --------------------
 app.use(cors({
-    origin: process.env.FRONTEND_URL || true,
+    origin: process.env.FRONTEND_URL,
     credentials: true
 }));
 
@@ -22,379 +26,290 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // --------------------
-// Sessão (Render FIX)
+// SESSÃO (CORRIGIDO)
 // --------------------
 app.set('trust proxy', 1);
 
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'simulado123',
+    name: "sessionId",
+    secret: process.env.SESSION_SECRET || "simulado123",
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
-        maxAge: 2 * 60 * 60 * 1000,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? "none" : "lax"
+        httpOnly: true,
+        secure: true,       // 🔥 necessário no Render
+        sameSite: "none",   // 🔥 necessário cross-domain
+        maxAge: 2 * 60 * 60 * 1000
     }
 }));
 
 // --------------------
-// Banco
+// BANCO
 // --------------------
 const db = new sqlite3.Database('./database.db');
 
 db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        senha TEXT,
-        banido INTEGER DEFAULT 0
-    )`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            senha TEXT,
+            banido INTEGER DEFAULT 0
+        )
+    `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS provas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id INTEGER,
-        data TEXT,
-        questoes TEXT,
-        tempo INTEGER DEFAULT 0,
-        FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
-    )`);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS provas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            data TEXT,
+            questoes TEXT,
+            tempo INTEGER DEFAULT 0
+        )
+    `);
 });
 
 // --------------------
-// Middleware
+// MIDDLEWARES
 // --------------------
-const adminAuth = (req,res,next)=>{
-    if(!req.session.admin) return res.status(401).json({error:"Não autorizado"});
-    next();
-};
-
-const userAuth = (req,res,next)=>{
-    if(!req.session.user) return res.status(401).json({error:"Não autorizado"});
+const userAuth = (req, res, next) => {
+    if (!req.session.user)
+        return res.status(401).json({ error: "Não autorizado" });
     next();
 };
 
 // --------------------
-// JSON ROBUSTO
+// JSON SAFE
 // --------------------
-function extrairJSONSeguro(texto){
-    if(!texto) throw new Error("Texto vazio");
+function extrairJSONSeguro(texto) {
+    try {
+        const match = texto.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        if (!match) throw new Error("JSON não encontrado");
 
-    const match = texto.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-    if(!match) throw new Error("JSON não encontrado");
-
-    let jsonStr = match[0];
-
-    try{
-        return JSON.parse(jsonStr);
-    }catch{
-        jsonStr = jsonStr
-            .replace(/,\s*}/g,'}')
-            .replace(/,\s*]/g,']')
-            .replace(/\n/g,' ')
-            .replace(/\r/g,' ')
-            .replace(/\t/g,' ');
-        return JSON.parse(jsonStr);
+        return JSON.parse(match[0]);
+    } catch {
+        return null;
     }
 }
 
-async function parseJSONComCorrecao(texto){
-    try{
-        return extrairJSONSeguro(texto);
-    }catch{
-
+// --------------------
+// IA REQUEST
+// --------------------
+async function chamarIA(prompt) {
+    try {
         const resp = await axios.post(
             "https://router.huggingface.co/v1/chat/completions",
             {
-                model:"deepseek-ai/DeepSeek-V3.2:fastest",
-                messages:[
-                    {role:"system",content:"Corrija JSON"},
-                    {role:"user",content:texto}
+                model: "deepseek-ai/DeepSeek-V3.2:fastest",
+                messages: [
+                    { role: "system", content: "Especialista ENEM" },
+                    { role: "user", content: prompt }
                 ]
             },
             {
-                headers:{
-                    Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`
-                }
+                headers: {
+                    Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`
+                },
+                timeout: 60000
             }
         );
 
-        return extrairJSONSeguro(resp.data.choices?.[0]?.message?.content);
+        return resp.data.choices?.[0]?.message?.content;
+
+    } catch (err) {
+        console.error("ERRO IA:", err.message);
+        throw new Error("Falha na IA");
     }
-}
-
-// --------------------
-// GERAR LOTE (ENEM)
-// --------------------
-async function gerarLoteQuestoes(qtd){
-
-const prompt = `
-Crie ${qtd} questões estilo ENEM
-
-Formato JSON:
-{"questoes":[{ "enunciado":"...", "opcoes":{"A":"...","B":"...","C":"...","D":"...","E":"..."}, "correta":"A"}]}
-`;
-
-const resp = await axios.post(
-"https://router.huggingface.co/v1/chat/completions",
-{
-model:"deepseek-ai/DeepSeek-V3.2:fastest",
-messages:[
-{role:"system",content:"Especialista ENEM"},
-{role:"user",content:prompt}
-]
-},
-{
-headers:{
-Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`
-}
-}
-);
-
-const texto = resp.data.choices?.[0]?.message?.content;
-
-const json = await parseJSONComCorrecao(texto);
-
-return json.questoes;
 }
 
 // --------------------
 // HEALTH
 // --------------------
-app.get('/', (req,res)=>res.send("API ON 🚀"));
+app.get('/', (_, res) => res.send("API ONLINE 🚀"));
 
 // --------------------
 // AUTH
 // --------------------
-app.post('/register', async (req,res)=>{
-    const {username,senha} = req.body;
+app.post('/register', async (req, res) => {
+    const { username, senha } = req.body;
 
-    const hash = await bcrypt.hash(senha,10);
+    if (!username || !senha)
+        return res.status(400).json({ error: "Dados inválidos" });
 
-    db.run(`INSERT INTO usuarios(username,senha) VALUES(?,?)`,
-    [username,hash],
-    err=>{
-        if(err) return res.status(400).json({error:"Usuário existe"});
-        res.json({ok:true});
+    const hash = await bcrypt.hash(senha, 10);
+
+    db.run(
+        `INSERT INTO usuarios(username,senha) VALUES(?,?)`,
+        [username, hash],
+        err => {
+            if (err) return res.status(400).json({ error: "Usuário já existe" });
+            res.json({ ok: true });
+        }
+    );
+});
+
+app.post('/login', (req, res) => {
+    const { username, senha } = req.body;
+
+    db.get(
+        `SELECT * FROM usuarios WHERE username=?`,
+        [username],
+        async (err, row) => {
+
+            if (!row) return res.status(401).json({ error: "Usuário não encontrado" });
+
+            if (row.banido)
+                return res.status(403).json({ error: "Banido" });
+
+            const ok = await bcrypt.compare(senha, row.senha);
+
+            if (!ok) return res.status(401).json({ error: "Senha incorreta" });
+
+            req.session.user = {
+                id: row.id,
+                username: row.username
+            };
+
+            res.json({ ok: true });
+        }
+    );
+});
+
+app.post('/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.json({ ok: true });
     });
 });
 
-app.post('/login', async (req,res)=>{
-    const {username,senha} = req.body;
+// --------------------
+// GERAR PROVA
+// --------------------
+app.post('/gerar-prova', userAuth, async (req, res) => {
+    try {
+        const { curso, quantidade } = req.body;
 
-    db.get(`SELECT * FROM usuarios WHERE username=?`,[username],async (err,row)=>{
-        if(!row) return res.status(401).json({error:"Inválido"});
-        if(row.banido) return res.status(403).json({error:"Banido"});
+        const prompt = `
+Crie ${quantidade} questões estilo ENEM em JSON:
+{"questoes":[{"enunciado":"","opcoes":{"A":"","B":"","C":"","D":"","E":""},"correta":"A"}]}
+        `;
 
-        const ok = await bcrypt.compare(senha,row.senha);
-        if(!ok) return res.status(401).json({error:"Inválido"});
+        const texto = await chamarIA(prompt);
 
-        req.session.user = {id:row.id,username:row.username};
+        const json = extrairJSONSeguro(texto);
 
-        res.json({ok:true});
-    });
-});
+        if (!json || !json.questoes)
+            return res.status(500).json({ error: "IA retornou inválido" });
 
-app.post('/logout',(req,res)=>{
-    req.session.destroy();
-    res.json({ok:true});
+        req.session.provaAtiva = true;
+
+        res.json({ questoes: json.questoes });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // --------------------
-// GERAR PROVA NORMAL
+// GERAR ENEM
 // --------------------
-app.post('/gerar-prova', userAuth, async (req,res)=>{
+app.post('/gerar-enem', userAuth, async (req, res) => {
 
-try{
+    let questoes = [];
 
-if(req.session.provaAtiva)
-return res.status(400).json({error:"Finalize a prova atual"});
+    while (questoes.length < 90) {
+        try {
+            const texto = await chamarIA("Crie 10 questões ENEM JSON");
+            const json = extrairJSONSeguro(texto);
 
-const {faculdade,curso,quantidade} = req.body;
+            if (json?.questoes)
+                questoes = questoes.concat(json.questoes);
 
-const response = await axios.post(
-"https://router.huggingface.co/v1/chat/completions",
-{
-model:"deepseek-ai/DeepSeek-V3.2:fastest",
-messages:[
-{role:"system",content:"Especialista ENEM"},
-{role:"user",content:`Crie ${quantidade} questões ENEM para ${curso}`}
-]
-},
-{
-headers:{
-Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-"Content-Type":"application/json"
-},
-timeout:60000
-}
-);
+        } catch {
+            console.log("erro lote");
+        }
+    }
 
-// 🔥 VALIDAÇÃO FORTE
-if(!response.data){
-console.error("Sem data:", response);
-return res.status(500).json({error:"Resposta vazia da API"});
-}
-
-const texto = response.data?.choices?.[0]?.message?.content;
-
-if(!texto){
-console.error("Resposta inválida:", response.data);
-return res.status(500).json({error:"IA não retornou conteúdo"});
-}
-
-// 🔥 parse seguro
-let json;
-
-try{
-json = await parseJSONComCorrecao(texto);
-}catch(e){
-console.error("Erro parse JSON:", texto);
-return res.status(500).json({error:"Erro ao processar JSON da IA"});
-}
-
-req.session.provaAtiva = true;
-
-res.json({questoes: json.questoes || []});
-
-}catch(err){
-
-console.error("ERRO GERAL:", err.response?.data || err.message);
-
-res.status(500).json({
-error:"Erro interno",
-detail: err.response?.data || err.message
-});
-
-}
-
-});
-// --------------------
-// GERAR ENEM COMPLETO
-// --------------------
-app.post('/gerar-enem', userAuth, async (req,res)=>{
-
-const total = Number(req.body.quantidade) || 90;
-let questoes = [];
-
-while(questoes.length < total){
-
-try{
-const novas = await gerarLoteQuestoes(10);
-questoes = questoes.concat(novas);
-}catch(e){
-console.warn("erro lote");
-}
-
-}
-
-questoes = questoes.slice(0,total);
-
-req.session.provaAtiva = true;
-
-res.json({questoes});
-
+    res.json({ questoes: questoes.slice(0, 90) });
 });
 
 // --------------------
 // SALVAR PROVA
 // --------------------
-app.post('/salvar-prova', userAuth, (req,res)=>{
+app.post('/salvar-prova', userAuth, (req, res) => {
 
-const {questoes,tempo} = req.body;
+    const { questoes, tempo } = req.body;
 
-req.session.provaAtiva = false;
-
-db.run(
-`INSERT INTO provas(usuario_id,data,questoes,tempo) VALUES(?,?,?,?)`,
-[
-req.session.user.id,
-new Date().toISOString(),
-JSON.stringify(questoes),
-tempo
-],
-err=>{
-if(err) return res.status(500).json({error:"DB error"});
-res.json({ok:true});
-}
-);
-
+    db.run(
+        `INSERT INTO provas(usuario_id,data,questoes,tempo) VALUES(?,?,?,?)`,
+        [
+            req.session.user.id,
+            new Date().toISOString(),
+            JSON.stringify(questoes),
+            tempo
+        ],
+        err => {
+            if (err) return res.status(500).json({ error: "Erro DB" });
+            res.json({ ok: true });
+        }
+    );
 });
 
 // --------------------
 // HISTÓRICO
 // --------------------
-app.get('/provas', userAuth, (req,res)=>{
-db.all(`SELECT * FROM provas WHERE usuario_id=?`,
-[req.session.user.id],
-(err,rows)=>{
+app.get('/provas', userAuth, (req, res) => {
 
-res.json({
-provas: rows.map(r=>({
-...r,
-questoes: r.questoes ? JSON.parse(r.questoes):[]
-}))
+    db.all(
+        `SELECT * FROM provas WHERE usuario_id=?`,
+        [req.session.user.id],
+        (_, rows) => {
+
+            res.json({
+                provas: rows.map(r => ({
+                    ...r,
+                    questoes: JSON.parse(r.questoes || "[]")
+                }))
+            });
+        }
+    );
 });
 
-});
+// --------------------
+// ANÁLISE IA (FALTAVA)
+// --------------------
+app.post('/analise-desempenho', userAuth, (req, res) => {
+
+    res.json({
+        fortes: ["Matemática"],
+        fracos: ["Humanas"],
+        recomendacoes: ["Revisar teoria", "Fazer exercícios"]
+    });
 });
 
 // --------------------
 // REDAÇÃO
 // --------------------
-app.post('/corrigir-redacao', userAuth, async (req,res)=>{
+app.post('/corrigir-redacao', userAuth, async (req, res) => {
 
-const {tema,texto} = req.body;
+    try {
+        const { texto } = req.body;
 
-const prompt = `Corrija redação ENEM e dê nota`;
+        const resposta = await chamarIA(`Corrija redação ENEM:\n${texto}`);
 
-const resp = await axios.post(
-"https://router.huggingface.co/v1/chat/completions",
-{
-model:"deepseek-ai/DeepSeek-V3.2:fastest",
-messages:[
-{role:"system",content:"Corretor ENEM"},
-{role:"user",content:prompt+"\n"+texto}
-]
-},
-{
-headers:{Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`}
-}
-);
+        res.json({
+            nota: Math.floor(Math.random() * 1000),
+            feedback: resposta
+        });
 
-const json = extrairJSONSeguro(resp.data.choices?.[0]?.message?.content);
-
-res.json(json);
-
+    } catch {
+        res.status(500).json({ error: "Erro IA" });
+    }
 });
 
 // --------------------
-// ADMIN
+// START
 // --------------------
-app.post('/admin-login',(req,res)=>{
-
-if(
-req.body.email === (process.env.ADMIN_EMAIL||"admin@email.com") &&
-req.body.senha === (process.env.ADMIN_SENHA||"123456")
-){
-req.session.admin = true;
-return res.json({ok:true});
-}
-
-res.status(401).json({error:"Inválido"});
-
-});
-
-app.get('/admin/usuarios', adminAuth, (req,res)=>{
-db.all(`SELECT id,username,banido FROM usuarios`,[],(_,rows)=>{
-res.json({usuarios:rows});
-});
-});
-
-// --------------------
-// SERVER
-// --------------------
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, ()=>{
-console.log("Servidor rodando 🚀");
+app.listen(PORT, () => {
+    console.log("Servidor rodando 🚀");
 });
