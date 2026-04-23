@@ -18,7 +18,7 @@ const app = express();
 // CORS com cookies
 // --------------------
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: true,
     credentials: true
 }));
 
@@ -28,8 +28,12 @@ app.use(express.static('public'));
 app.use(session({
     secret: process.env.SESSION_SECRET || 'simulado123',
     resave: false,
-    saveUninitialized: true,
-    cookie: { maxAge: 2*60*60*1000 } // 2h
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 2*60*60*1000,
+        secure: true,
+        sameSite: "none"
+    }
 }));
 
 // --------------------
