@@ -1,5 +1,8 @@
 const sections = document.querySelectorAll('.section');
 const menuItems = document.querySelectorAll('.sidebar nav ul li');
+const API = "https://formulavest-2.onrender.com";
+
+
 
 menuItems.forEach(item=>{
     item.addEventListener('click',()=>{
