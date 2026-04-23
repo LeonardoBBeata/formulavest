@@ -1,193 +1,189 @@
-// --------------------
-// CONFIG
-// --------------------
 const API = "https://formulavest-2.onrender.com";
 
-// --------------------
-// HELPERS
-// --------------------
-const $ = (id) => document.getElementById(id);
+// ============================
+// ELEMENTOS
+// ============================
+const authSection = document.getElementById('auth-section');
+const sidebar = document.querySelector('.sidebar');
+const mainContent = document.querySelector('.main-content');
 
-// --------------------
-// FETCH PADRÃO
-// --------------------
-async function apiFetch(path, options = {}) {
-    try {
-        const res = await fetch(API + path, {
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options.headers || {})
-            },
-            ...options
-        });
+const sections = document.querySelectorAll('.section');
+const menuItems = document.querySelectorAll('.sidebar nav ul li');
 
-        const data = await res.json();
+// ============================
+// ESTADO INICIAL
+// ============================
+sidebar.classList.add('hidden');
+mainContent.classList.add('hidden');
 
-        if (!res.ok) throw new Error(data.error || "Erro na API");
-
-        return data;
-
-    } catch (err) {
-        console.error("API ERROR:", err);
-        throw err;
-    }
+// ============================
+// UI CONTROL
+// ============================
+function mostrarApp(){
+    authSection.classList.add('hidden');
+    sidebar.classList.remove('hidden');
+    mainContent.classList.remove('hidden');
 }
 
-// --------------------
-// NAVEGAÇÃO
-// --------------------
-function setupNavigation() {
-    const sections = document.querySelectorAll('.section');
-    const menuItems = document.querySelectorAll('.sidebar nav ul li');
+function mostrarLogin(){
+    authSection.classList.remove('hidden');
+    sidebar.classList.add('hidden');
+    mainContent.classList.add('hidden');
+}
 
-    menuItems.forEach(item => {
-        item.addEventListener('click', () => {
+// ============================
+// MENU
+// ============================
+menuItems.forEach(item=>{
+    item.addEventListener('click',()=>{
+        menuItems.forEach(i=>i.classList.remove('active'));
+        item.classList.add('active');
 
-            menuItems.forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
+        const target = item.dataset.section;
 
-            const target = item.dataset.section;
-
-            sections.forEach(s => {
-                s.classList.toggle('hidden', s.id !== target);
-            });
-
-            if (target === 'dashboard') carregarHistorico();
+        sections.forEach(s=>{
+            s.id === target ? s.classList.remove('hidden') : s.classList.add('hidden');
         });
+
+        if(target === 'dashboard') carregarHistorico();
     });
-}
+});
 
-// --------------------
+// ============================
 // TEMA
-// --------------------
-function setupTheme() {
-    const toggle = $('tema-toggle');
+// ============================
+const temaToggle = document.getElementById('tema-toggle');
 
-    if (!toggle) return;
+if(localStorage.getItem('tema') === 'dark'){
+    document.body.classList.add('dark');
+    temaToggle.checked = true;
+}
 
-    const temaSalvo = localStorage.getItem('tema');
-
-    if (temaSalvo === 'dark') {
+temaToggle.addEventListener('change',()=>{
+    if(temaToggle.checked){
         document.body.classList.add('dark');
-        toggle.checked = true;
+        localStorage.setItem('tema','dark');
+    } else {
+        document.body.classList.remove('dark');
+        localStorage.setItem('tema','light');
     }
+});
 
-    toggle.addEventListener('change', () => {
-        const dark = toggle.checked;
-        document.body.classList.toggle('dark', dark);
-        localStorage.setItem('tema', dark ? 'dark' : 'light');
+// ============================
+// LOGIN / REGISTRO
+// ============================
+document.getElementById('show-register').onclick = ()=>{
+    document.getElementById('register-box').classList.remove('hidden');
+};
+
+document.getElementById('show-login').onclick = ()=>{
+    document.getElementById('register-box').classList.add('hidden');
+};
+
+document.getElementById('register-btn').onclick = async ()=>{
+    const username = document.getElementById('reg-username').value;
+    const senha = document.getElementById('reg-senha').value;
+
+    const res = await fetch(`${API}/register`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({username,senha}),
+        credentials:'include'
     });
+
+    const data = await res.json();
+
+    if(data.ok){
+        alert("Registrado!");
+    } else {
+        alert(data.error);
+    }
+};
+
+document.getElementById('login-btn').onclick = async ()=>{
+    const username = document.getElementById('login-username').value;
+    const senha = document.getElementById('login-senha').value;
+
+    const res = await fetch(`${API}/login`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({username,senha}),
+        credentials:'include'
+    });
+
+    const data = await res.json();
+
+    if(data.ok){
+        mostrarApp();
+    } else {
+        alert(data.error);
+    }
+};
+
+document.getElementById('logout-btn').onclick = async ()=>{
+    await fetch(`${API}/logout`,{
+        method:'POST',
+        credentials:'include'
+    });
+
+    mostrarLogin();
+};
+
+// ============================
+// VERIFICAR SESSÃO
+// ============================
+async function verificarSessao(){
+    try{
+        const res = await fetch(`${API}/provas`,{
+            credentials:'include'
+        });
+
+        if(res.ok){
+            mostrarApp();
+        } else {
+            mostrarLogin();
+        }
+    }catch{
+        mostrarLogin();
+    }
 }
 
-// --------------------
-// AUTH
-// --------------------
-function setupAuth() {
+verificarSessao();
 
-    $('show-register')?.addEventListener('click', () =>
-        $('register-box').classList.remove('hidden')
-    );
-
-    $('show-login')?.addEventListener('click', () =>
-        $('register-box').classList.add('hidden')
-    );
-
-    // REGISTRO
-    $('register-btn')?.addEventListener('click', async () => {
-
-        const username = $('reg-username').value.trim();
-        const senha = $('reg-senha').value.trim();
-
-        if (!username || !senha) return alert("Preencha tudo");
-
-        try {
-            await apiFetch('/register', {
-                method: 'POST',
-                body: JSON.stringify({ username, senha })
-            });
-
-            alert("Registrado com sucesso!");
-            $('register-box').classList.add('hidden');
-
-        } catch (e) {
-            alert(e.message);
-        }
-    });
-
-    // LOGIN
-    $('login-btn')?.addEventListener('click', async () => {
-
-        const username = $('login-username').value.trim();
-        const senha = $('login-senha').value.trim();
-
-        if (!username || !senha) return alert("Preencha tudo");
-
-        try {
-            await apiFetch('/login', {
-                method: 'POST',
-                body: JSON.stringify({ username, senha })
-            });
-
-            location.reload();
-
-        } catch (e) {
-            alert(e.message);
-        }
-    });
-
-    // LOGOUT
-    $('logout-btn')?.addEventListener('click', async () => {
-        await apiFetch('/logout', { method: 'POST' });
-        location.reload();
-    });
-}
-
-// --------------------
-// PROVA NORMAL
-// --------------------
+// ============================
+// GERAR PROVA
+// ============================
 let questoes = [];
-let cronometro;
+let tempo = 0;
+let timer;
 
-function setupProva() {
+document.getElementById('gerar-btn').onclick = async ()=>{
+    const faculdade = document.getElementById('faculdade').value;
+    const curso = document.getElementById('curso').value;
+    const quantidade = document.getElementById('quantidade').value || 10;
 
-    $('gerar-btn')?.addEventListener('click', async () => {
-
-        const faculdade = $('faculdade').value.trim();
-        const curso = $('curso').value.trim();
-        const quantidade = Number($('quantidade').value) || 10;
-
-        if (!faculdade || !curso) return alert("Preencha os campos");
-
-        $('prova-container').innerHTML = "Gerando prova...";
-
-        try {
-            const data = await apiFetch('/gerar-prova', {
-                method: 'POST',
-                body: JSON.stringify({ faculdade, curso, quantidade })
-            });
-
-            if (!data.questoes) throw new Error("Falha da IA");
-
-            questoes = data.questoes;
-
-            renderProva();
-            iniciarCronometro(quantidade);
-
-        } catch (e) {
-            $('prova-container').innerHTML = "";
-            alert(e.message);
-        }
+    const res = await fetch(`${API}/gerar-prova`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({faculdade,curso,quantidade}),
+        credentials:'include'
     });
 
-    $('finalizar-btn')?.addEventListener('click', finalizarProva);
-}
+    const data = await res.json();
 
-function renderProva() {
-    $('prova-container').innerHTML = questoes.map((q, i) => `
+    questoes = data.questoes;
+
+    renderProva();
+    iniciarTimer(questoes.length);
+};
+
+function renderProva(){
+    const container = document.getElementById('prova-container');
+
+    container.innerHTML = questoes.map((q,i)=>`
         <div class="questao">
-            <p><strong>Q${i + 1}</strong>: ${q.enunciado}</p>
-            ${Object.entries(q.opcoes).map(([l, t]) => `
+            <p><strong>Q${i+1}</strong>: ${q.enunciado}</p>
+            ${Object.entries(q.opcoes).map(([l,t])=>`
                 <label>
                     ${l}) ${t}
                     <input type="radio" name="q${i}" value="${l}">
@@ -196,152 +192,88 @@ function renderProva() {
         </div>
     `).join('');
 
-    $('finalizar-btn').classList.remove('hidden');
+    document.getElementById('finalizar-btn').classList.remove('hidden');
 }
 
-function iniciarCronometro(qtd) {
-    let tempo = qtd * 5 * 60;
+// ============================
+// TIMER
+// ============================
+function iniciarTimer(qtd){
+    tempo = qtd * 5 * 60;
 
-    clearInterval(cronometro);
+    clearInterval(timer);
 
-    cronometro = setInterval(() => {
-        const min = Math.floor(tempo / 60);
-        const seg = tempo % 60;
+    timer = setInterval(()=>{
+        const min = Math.floor(tempo/60);
+        const seg = tempo%60;
 
-        $('tempo-prova').textContent = `Tempo: ${min}m ${seg}s`;
+        document.getElementById('tempo-prova').textContent =
+            `Tempo: ${min}m ${seg}s`;
 
-        if (tempo-- <= 0) {
-            clearInterval(cronometro);
-            alert("Tempo acabou!");
-            finalizarProva();
+        tempo--;
+
+        if(tempo <= 0){
+            clearInterval(timer);
+            alert("Tempo esgotado!");
         }
 
-    }, 1000);
+    },1000);
 }
 
-async function finalizarProva() {
-    clearInterval(cronometro);
+// ============================
+// FINALIZAR
+// ============================
+document.getElementById('finalizar-btn').onclick = async ()=>{
+    clearInterval(timer);
 
-    const respostas = questoes.map((q, i) => {
-        const marcada = document.querySelector(`input[name="q${i}"]:checked`);
-
+    const respostas = questoes.map((q,i)=>{
+        const r = document.querySelector(`input[name="q${i}"]:checked`);
         return {
-            enunciado: q.enunciado,
-            opcoes: q.opcoes,
             correta: q.correta,
-            selecionada: marcada ? marcada.value : null
+            selecionada: r ? r.value : null
         };
     });
 
-    try {
-        await apiFetch('/salvar-prova', {
-            method: 'POST',
-            body: JSON.stringify({ questoes: respostas, tempo: 0 })
-        });
-
-        alert("Prova salva!");
-        carregarHistorico();
-
-    } catch (e) {
-        alert(e.message);
-    }
-}
-
-// --------------------
-// ENEM
-// --------------------
-function setupEnem() {
-
-    $('enem-btn')?.addEventListener('click', async () => {
-
-        $('enem-container').innerHTML = "Gerando ENEM...";
-
-        try {
-            const data = await apiFetch('/gerar-enem', {
-                method: 'POST',
-                body: JSON.stringify({ quantidade: 90 })
-            });
-
-            const questoes = data.questoes || [];
-
-            $('enem-container').innerHTML = questoes.map((q, i) => `
-                <div class="questao">
-                    <p><strong>Q${i + 1}</strong>: ${q.enunciado}</p>
-                </div>
-            `).join('');
-
-        } catch (e) {
-            $('enem-container').innerHTML = "";
-            alert(e.message);
-        }
+    await fetch(`${API}/salvar-prova`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+            questoes: respostas,
+            tempo
+        }),
+        credentials:'include'
     });
-}
 
-// --------------------
+    carregarHistorico();
+};
+
+// ============================
 // DASHBOARD
-// --------------------
-async function carregarHistorico() {
-    try {
-        const data = await apiFetch('/provas');
+// ============================
+async function carregarHistorico(){
 
-        const provas = data.provas || [];
-
-        if (provas.length === 0) {
-            $('resultado').innerHTML = "Nenhuma prova";
-            return;
-        }
-
-        $('resultado').innerHTML = provas.map((p, i) => `
-            <div class="prova-card">
-                <h4>Prova ${i + 1}</h4>
-                <p>${p.questoes.length} questões</p>
-            </div>
-        `).join('');
-
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-// --------------------
-// REDAÇÃO
-// --------------------
-function setupRedacao() {
-
-    $('enviar-redacao')?.addEventListener('click', async () => {
-
-        const tema = $('tema-redacao').value.trim();
-        const texto = $('texto-redacao').value.trim();
-
-        if (!tema || !texto) return alert("Preencha tudo");
-
-        try {
-            const data = await apiFetch('/corrigir-redacao', {
-                method: 'POST',
-                body: JSON.stringify({ tema, texto })
-            });
-
-            $('feedback-redacao').innerHTML = `
-                <h3>Nota: ${data.nota}</h3>
-                <p>${data.feedback}</p>
-            `;
-
-        } catch (e) {
-            alert(e.message);
-        }
+    const res = await fetch(`${API}/provas`,{
+        credentials:'include'
     });
-}
 
-// --------------------
-// INIT
-// --------------------
-function init() {
-    setupNavigation();
-    setupTheme();
-    setupAuth();
-    setupProva();
-    setupEnem();
-    setupRedacao();
-}
+    const data = await res.json();
 
-document.addEventListener('DOMContentLoaded', init);
+    const provas = data.provas || [];
+
+    document.getElementById('total-provas').textContent = provas.length;
+
+    let total = 0;
+    let acertos = 0;
+
+    provas.forEach(p=>{
+        p.questoes.forEach(q=>{
+            total++;
+            if(q.selecionada === q.correta) acertos++;
+        });
+    });
+
+    const media = total ? (acertos/total)*100 : 0;
+
+    document.getElementById('media-acertos').textContent =
+        media.toFixed(1)+"%";
+}
