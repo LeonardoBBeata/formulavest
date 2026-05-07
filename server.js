@@ -1,136 +1,220 @@
 require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
-const session = require('express-session');
-const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const helmet = require('helmet');
+const compression = require('compression');
+const PDFDocument = require('pdfkit');
+const NodeCache = require('node-cache');
+const { Pool } = require('pg');
 const path = require('path');
-
 const app = express();
-
-// ================================
-// CONFIG
-// ================================
-const PORT = process.env.PORT || 3000;
-
-// ================================
-// CORS
-// ================================
+const cache = new NodeCache({
+stdTTL:300
+});
+// =========================
+// POSTGRES
+// =========================
+const db = new Pool({
+connectionString:process.env.DATABASE_URL,
+ssl:{
+rejectUnauthorized:false
+}
+});
+// =========================
+// MIDDLEWARES
+// =========================
+app.use(helmet());
+app.use(compression());
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true
+origin:process.env.FRONTEND_URL,
+credentials:true
 }));
-
 app.use(express.json());
-
-// ================================
-// PUBLIC
-// ================================
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ================================
-// ROTAS HTML
-// ================================
-app.get('/', (_, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/login', (_, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-// ================================
-// SESSION
-// ================================
-app.set('trust proxy', 1);
-
-app.use(session({
-    name: 'sessionId',
-    secret: process.env.SESSION_SECRET || 'simulado123',
-
-    resave: false,
-    saveUninitialized: false,
-
-    proxy: true,
-
-    cookie: {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge: 1000 * 60 * 60 * 2
-    }
-}));
-
-// ================================
-// DATABASE
-// ================================
-const db = new sqlite3.Database('./database.db');
-
-db.serialize(() => {
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            senha TEXT,
-            banido INTEGER DEFAULT 0
-        )
-    `);
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS provas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER,
-            data TEXT,
-            questoes TEXT,
-            tempo INTEGER DEFAULT 0
-        )
-    `);
-
-});
-
-// ================================
-// AUTH MIDDLEWARE
-// ================================
-function userAuth(req, res, next){
-
-    if(!req.session.user){
-        return res.status(401).json({
-            error:'Não autorizado'
-        });
-    }
-
-    next();
+app.use(express.static(
+path.join(__dirname,'public')
+));
+// =========================
+// JWT
+// =========================
+function gerarToken(user){
+return jwt.sign(
+{
+id:user.id,
+username:user.username
+},
+process.env.JWT_SECRET,
+{
+expiresIn:'7d'
 }
-
-// ================================
-// JSON SAFE
-// ================================
-function extrairJSONSeguro(texto){
-
-    try{
-
-        const match = texto.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-
-        if(!match){
-            throw new Error('JSON inválido');
-        }
-
-        return JSON.parse(match[0]);
-
-    }catch(err){
-
-        console.log('ERRO JSON:', err.message);
-
-        return null;
-    }
+);
 }
+function auth(req,res,next){
+const authHeader = req.headers.authorization;
+if(!authHeader){
+return res.status(401).json({
+error:'Token ausente'
+});
+}
+const token = authHeader.split(' ')[1];
+try{
+const decoded = jwt.verify(
+token,
+process.env.JWT_SECRET
+);
+req.user = decoded;
+next();
+}catch{
+res.status(401).json({
+error:'Token inválido'
+});
+}
+}
+// =========================
+// DATABASE INIT
+// =========================
+async function initDB(){
+await db.query(`
+ CREATE TABLE IF NOT EXISTS usuarios(
+ id SERIAL PRIMARY KEY,
+ username TEXT UNIQUE,
+ senha TEXT,
+ xp INTEGER DEFAULT 0,
+ nivel INTEGER DEFAULT 1
+ )
+ `);
+await db.query(`
+ CREATE TABLE IF NOT EXISTS provas(
+ id SERIAL PRIMARY KEY,
+ usuario_id INTEGER,
+ acertos INTEGER,
+ total INTEGER,
+ percentual REAL,
+ questoes JSONB,
+ created_at TIMESTAMP DEFAULT NOW()
+ )
+ `);
+await db.query(`
+ CREATE TABLE IF NOT EXISTS redacoes(
+ id SERIAL PRIMARY KEY,
+ usuario_id INTEGER,
+ tema TEXT,
+ texto TEXT,
+ nota INTEGER,
+ c1 INTEGER,
+ c2 INTEGER,
+ c3 INTEGER,
+ c4 INTEGER,
+ c5 INTEGER,
+ feedback TEXT
+ )
+ `);
+}
+initDB();
+// =========================
+// REGISTER
+// =========================
+app.post('/register', async(req,res)=>{
+4
+try{
+const {
+username,
+senha
+} = req.body;
+const hash = await bcrypt.hash(
+senha,
+10
+);
+await db.query(
+`
+ INSERT INTO usuarios(username,senha)
+ VALUES($1,$2)
+ `,
+[username,hash]
+);
+res.json({ ok:true });
+}catch(err){
+res.status(500).json({
+error:'Erro ao registrar'
+});
+}
+});
+// =========================
+// LOGIN
+// =========================
+app.post('/login', async(req,res)=>{
+try{
+const {
+username,
+senha
+} = req.body;
+const result = await db.query(
+`SELECT * FROM usuarios WHERE username=$1`,
+[username]
+);
+const user = result.rows[0];
+if(!user){
+5
+return res.status(401).json({
+error:'Usuário não encontrado'
+});
+}
+const ok = await bcrypt.compare(
+senha,
+user.senha
+);
+if(!ok){
+return res.status(401).json({
+error:'Senha incorreta'
+});
+}
+const token = gerarToken(user);
+res.json({
+ok:true,
+token,
+user:{
+id:user.id,
+username:user.username,
+nivel:user.nivel,
+xp:user.xp
+}
+});
+}catch(err){
+res.status(500).json({
+error:'Erro login'
+});
+}
+});
+// =========================
+// RANKING GLOBAL
+// =========================
+app.get('/ranking', async(_,res)=>{
+try{
+const result = await db.query(`
+ SELECT
+ username,
+6
+ xp,
+ nivel
+ FROM usuarios
+ ORDER BY xp DESC
+ LIMIT 50
+ `);
+res.json({
+ranking:result.rows
+});
+}catch{
+res.status(500).json({
+error:'Erro ranking'
+});
+}
+});
 
-// ================================
+// =========================
 // IA
-// ================================
+// =========================
 async function chamarIA(prompt){
 
     try{
@@ -143,7 +227,7 @@ async function chamarIA(prompt){
                 messages:[
                     {
                         role:'system',
-                        content:'Você é um especialista em vestibulares e ENEM.'
+                        content:'Você é um especialista em ENEM e vestibulares.'
                     },
                     {
                         role:'user',
@@ -153,172 +237,54 @@ async function chamarIA(prompt){
             },
             {
                 headers:{
-                    Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`
+                    Authorization:
+                    `Bearer ${process.env.HUGGINGFACE_API_KEY}`
                 },
 
                 timeout:60000
             }
         );
 
-        return response.data.choices?.[0]?.message?.content;
+        return response.data
+            .choices?.[0]
+            ?.message?.content;
 
     }catch(err){
 
-        console.log('ERRO IA:', err.message);
+        console.log(err);
 
-        throw new Error('Falha ao gerar conteúdo');
+        throw new Error('Erro IA');
     }
 }
 
-// ================================
-// HEALTH
-// ================================
-app.get('/health', (_,res)=>{
-    res.json({
-        ok:true,
-        message:'API ONLINE 🚀'
-    });
-});
-
-// ================================
-// REGISTER
-// ================================
-app.post('/register', async (req,res)=>{
+// =========================
+// JSON SAFE
+// =========================
+function extrairJSONSeguro(texto){
 
     try{
 
-        const { username, senha } = req.body;
-
-        if(!username || !senha){
-
-            return res.status(400).json({
-                error:'Dados inválidos'
-            });
-        }
-
-        const hash = await bcrypt.hash(senha,10);
-
-        db.run(
-            `
-            INSERT INTO usuarios(username,senha)
-            VALUES(?,?)
-            `,
-            [username,hash],
-
-            function(err){
-
-                if(err){
-
-                    return res.status(400).json({
-                        error:'Usuário já existe'
-                    });
-                }
-
-                res.json({
-                    ok:true
-                });
-            }
+        const match = texto.match(
+            /\{[\s\S]*\}|\[[\s\S]*\]/
         );
 
-    }catch(err){
+        if(!match){
 
-        res.status(500).json({
-            error:'Erro interno'
-        });
-    }
-});
-
-// ================================
-// LOGIN
-// ================================
-app.post('/login', (req,res)=>{
-
-    const { username, senha } = req.body;
-
-    if(!username || !senha){
-
-        return res.status(400).json({
-            error:'Preencha todos os campos'
-        });
-    }
-
-    db.get(
-        `
-        SELECT * FROM usuarios
-        WHERE username = ?
-        `,
-        [username],
-
-        async (err,row)=>{
-
-            if(err){
-
-                return res.status(500).json({
-                    error:'Erro interno'
-                });
-            }
-
-            if(!row){
-
-                return res.status(401).json({
-                    error:'Usuário não encontrado'
-                });
-            }
-
-            if(row.banido){
-
-                return res.status(403).json({
-                    error:'Usuário banido'
-                });
-            }
-
-            const senhaCorreta = await bcrypt.compare(
-                senha,
-                row.senha
-            );
-
-            if(!senhaCorreta){
-
-                return res.status(401).json({
-                    error:'Senha incorreta'
-                });
-            }
-
-            req.session.user = {
-                id:row.id,
-                username:row.username
-            };
-
-            res.json({
-                ok:true,
-                user:{
-                    id:row.id,
-                    username:row.username
-                }
-            });
+            throw new Error('JSON inválido');
         }
-    );
-});
 
-// ================================
-// LOGOUT
-// ================================
-app.post('/logout', (req,res)=>{
+        return JSON.parse(match[0]);
 
-    req.session.destroy(()=>{
+    }catch{
 
-        res.clearCookie('sessionId');
+        return null;
+    }
+}
 
-        res.json({
-            ok:true
-        });
-    });
-});
-
-// ================================
+// =========================
 // GERAR PROVA
-// ================================
-app.post('/gerar-prova', userAuth, async (req,res)=>{
+// =========================
+app.post('/gerar-prova', auth, async(req,res)=>{
 
     try{
 
@@ -328,13 +294,16 @@ app.post('/gerar-prova', userAuth, async (req,res)=>{
             quantidade
         } = req.body;
 
-        const qtd = Number(quantidade) || 10;
+        const qtd =
+        Number(quantidade) || 10;
 
         const prompt = `
-Crie ${qtd} questões estilo ENEM para o curso ${curso}
-na faculdade ${faculdade}.
+Crie ${qtd} questões estilo ENEM para:
 
-Retorne SOMENTE JSON:
+Curso: ${curso}
+Faculdade: ${faculdade}
+
+RETORNE SOMENTE JSON:
 
 {
   "questoes":[
@@ -353,14 +322,16 @@ Retorne SOMENTE JSON:
 }
 `;
 
-        const respostaIA = await chamarIA(prompt);
+        const resposta =
+        await chamarIA(prompt);
 
-        const json = extrairJSONSeguro(respostaIA);
+        const json =
+        extrairJSONSeguro(resposta);
 
         if(!json || !json.questoes){
 
             return res.status(500).json({
-                error:'IA retornou inválido'
+                error:'IA inválida'
             });
         }
 
@@ -373,15 +344,15 @@ Retorne SOMENTE JSON:
         console.log(err);
 
         res.status(500).json({
-            error:err.message
+            error:'Erro ao gerar prova'
         });
     }
 });
 
-// ================================
-// GERAR ENEM
-// ================================
-app.post('/gerar-enem', userAuth, async (req,res)=>{
+// =========================
+// GERAR ENEM COMPLETO
+// =========================
+app.post('/gerar-enem', auth, async(req,res)=>{
 
     try{
 
@@ -391,11 +362,32 @@ app.post('/gerar-enem', userAuth, async (req,res)=>{
 
             try{
 
-                const resposta = await chamarIA(`
-Crie 10 questões estilo ENEM em JSON.
+                const resposta =
+                await chamarIA(`
+
+Crie 10 questões inéditas estilo ENEM.
+
+RETORNE SOMENTE JSON:
+
+{
+  "questoes":[
+    {
+      "enunciado":"",
+      "opcoes":{
+        "A":"",
+        "B":"",
+        "C":"",
+        "D":"",
+        "E":""
+      },
+      "correta":"A"
+    }
+  ]
+}
 `);
 
-                const json = extrairJSONSeguro(resposta);
+                const json =
+                extrairJSONSeguro(resposta);
 
                 if(json?.questoes){
 
@@ -407,7 +399,10 @@ Crie 10 questões estilo ENEM em JSON.
 
             }catch(err){
 
-                console.log('Erro lote:', err.message);
+                console.log(
+                    'Erro lote:',
+                    err.message
+                );
             }
         }
 
@@ -417,188 +412,211 @@ Crie 10 questões estilo ENEM em JSON.
 
     }catch(err){
 
+        console.log(err);
+
         res.status(500).json({
-            error:'Erro ao gerar ENEM'
+            error:'Erro ENEM'
         });
     }
 });
 
-// ================================
+// =========================
 // SALVAR PROVA
-// ================================
-app.post('/salvar-prova', userAuth, (req,res)=>{
+// =========================
+app.post('/salvar-prova', auth, async(req,res)=>{
 
     try{
 
         const {
-            questoes,
-            tempo
+            questoes
         } = req.body;
 
-        db.run(
+        let acertos = 0;
+
+        questoes.forEach(q=>{
+
+            if(q.selecionada === q.correta){
+
+                acertos++;
+            }
+        });
+
+        const percentual =
+        (acertos / questoes.length) * 100;
+
+        // XP
+        const xpGanho =
+        Math.floor(percentual);
+
+        await db.query(
+            `
+            UPDATE usuarios
+            SET
+                xp = xp + $1,
+                nivel = FLOOR((xp + $1)/100)+1
+            WHERE id = $2
+            `,
+            [
+                xpGanho,
+                req.user.id
+            ]
+        );
+
+        // salva prova
+        await db.query(
             `
             INSERT INTO provas(
                 usuario_id,
-                data,
-                questoes,
-                tempo
+                acertos,
+                total,
+                percentual,
+                questoes
             )
-            VALUES(?,?,?,?)
+            VALUES($1,$2,$3,$4,$5)
             `,
             [
-                req.session.user.id,
-                new Date().toISOString(),
-                JSON.stringify(questoes),
-                tempo
-            ],
-
-            err=>{
-
-                if(err){
-
-                    return res.status(500).json({
-                        error:'Erro ao salvar'
-                    });
-                }
-
-                res.json({
-                    ok:true
-                });
-            }
+                req.user.id,
+                acertos,
+                questoes.length,
+                percentual,
+                JSON.stringify(questoes)
+            ]
         );
 
-    }catch(err){
-
-        res.status(500).json({
-            error:'Erro interno'
-        });
-    }
-});
-
-// ================================
-// HISTÓRICO
-// ================================
-app.get('/provas', userAuth, (req,res)=>{
-
-    db.all(
-        `
-        SELECT * FROM provas
-        WHERE usuario_id = ?
-        ORDER BY id DESC
-        `,
-        [req.session.user.id],
-
-        (err,rows)=>{
-
-            if(err){
-
-                return res.status(500).json({
-                    error:'Erro DB'
-                });
-            }
-
-            res.json({
-                provas:rows.map(row=>({
-
-                    ...row,
-
-                    questoes:JSON.parse(
-                        row.questoes || '[]'
-                    )
-                }))
-            });
-        }
-    );
-});
-
-// ================================
-// ANÁLISE
-// ================================
-app.post('/analise-desempenho', userAuth, (_,res)=>{
-
-    res.json({
-
-        fortes:[
-            'Matemática'
-        ],
-
-        fracos:[
-            'Humanas'
-        ],
-
-        recomendacoes:[
-            'Revisar teoria',
-            'Fazer exercícios',
-            'Treinar interpretação'
-        ]
-    });
-});
-
-// ================================
-// REDAÇÃO
-// ================================
-app.post('/corrigir-redacao', userAuth, async (req,res)=>{
-
-    try{
-
-        const { texto } = req.body;
-
-        if(!texto){
-
-            return res.status(400).json({
-                error:'Texto vazio'
-            });
-        }
-
-        const resposta = await chamarIA(`
-Corrija esta redação ENEM:
-
-${texto}
-
-Forneça:
-- nota
-- competências
-- pontos fortes
-- pontos fracos
-- melhorias
-`);
+        // limpa cache
+        cache.del(
+            `provas_${req.user.id}`
+        );
 
         res.json({
-
-            nota:Math.floor(
-                Math.random() * 1000
-            ),
-
-            feedback:resposta
+            ok:true,
+            acertos,
+            percentual
         });
 
     }catch(err){
 
+        console.log(err);
+
         res.status(500).json({
-            error:'Erro ao corrigir'
+            error:'Erro salvar prova'
         });
     }
 });
 
-// ================================
-// 404
-// ================================
-app.use((req,res)=>{
-
-    res.status(404).json({
-        error:'Rota não encontrada'
-    });
+// =========================
+// CACHE PROVAS
+// =========================
+app.get('/provas', auth, async(req,res)=>{
+const cacheKey = `provas_${req.user.id}`;
+const cached = cache.get(cacheKey);
+if(cached){
+return res.json(cached);
+}
+const result = await db.query(
+`
+ SELECT * FROM provas
+ WHERE usuario_id=$1
+ ORDER BY created_at DESC
+ `,
+[req.user.id]
+);
+const payload = {
+provas:result.rows
+};
+cache.set(cacheKey,payload);
+res.json(payload);
+7
 });
-
-// ================================
+// =========================
+// PDF
+// =========================
+app.get('/pdf/:id', auth, async(req,res)=>{
+const result = await db.query(
+`SELECT * FROM provas WHERE id=$1`,
+[req.params.id]
+);
+const prova = result.rows[0];
+const doc = new PDFDocument();
+res.setHeader(
+'Content-Type',
+'application/pdf'
+);
+doc.pipe(res);
+doc.fontSize(24)
+.text('Simulado ENEM');
+doc.moveDown();
+prova.questoes.forEach((q,i)=>{
+doc.fontSize(14)
+.text(`${i+1}. ${q.enunciado}`);
+doc.moveDown();
+});
+doc.end();
+});
+// =========================
+// REDAÇÃO REAL
+// =========================
+app.post('/corrigir-redacao', auth, async(req,res)=>{
+try{
+const {
+tema,
+texto
+8
+} = req.body;
+const prompt = `
+Você é um corretor oficial do ENEM.
+Corrija esta redação usando as 5 competências.
+Tema: ${tema}
+Texto:
+${texto}
+Retorne JSON:
+{
+ "nota_total":0,
+ "competencia1":0,
+ "competencia2":0,
+ "competencia3":0,
+ "competencia4":0,
+ "competencia5":0,
+ "feedback":""
+}
+`;
+const response = await axios.post(
+'https://router.huggingface.co/v1/chat/completions',
+{
+model:'deepseek-ai/DeepSeek-V3.2:fastest',
+messages:[
+{
+role:'user',
+content:prompt
+}
+]
+},
+{
+headers:{
+Authorization:`Bearer ${process.env.HUGGINGFACE_API_KEY}`
+}
+}
+);
+const textoIA = response.data
+.choices[0]
+.message
+.content;
+const json = JSON.parse(
+textoIA.match(/\{[\s\S]*\}/)[0]
+);
+9
+res.json(json);
+}catch(err){
+console.log(err);
+res.status(500).json({
+error:'Erro redação'
+});
+}
+});
+// =========================
 // START
-// ================================
-app.listen(PORT, ()=>{
-
-    console.log(`
-====================================
-🚀 SERVIDOR ONLINE
-🌐 PORTA: ${PORT}
-====================================
-`);
+// =========================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT,()=>{
+console.log(`Servidor online ${PORT}`);
 });
