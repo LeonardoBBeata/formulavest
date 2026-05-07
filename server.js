@@ -125,7 +125,6 @@ senha
 } = req.body;
 const hash = await bcrypt.hash(
 senha,
-10
 );
 await db.query(
 `
@@ -155,8 +154,7 @@ const result = await db.query(
 [username]
 );
 const user = result.rows[0];
-if(!user){
-5
+if(!user)
 return res.status(401).json({
 error:'Usuário não encontrado'
 });
@@ -195,7 +193,6 @@ try{
 const result = await db.query(`
  SELECT
  username,
-6
  xp,
  nivel
  FROM usuarios
@@ -526,7 +523,6 @@ provas:result.rows
 };
 cache.set(cacheKey,payload);
 res.json(payload);
-7
 });
 // =========================
 // PDF
@@ -561,7 +557,6 @@ try{
 const {
 tema,
 texto
-8
 } = req.body;
 const prompt = `
 Você é um corretor oficial do ENEM.
@@ -604,7 +599,6 @@ const textoIA = response.data
 const json = JSON.parse(
 textoIA.match(/\{[\s\S]*\}/)[0]
 );
-9
 res.json(json);
 }catch(err){
 console.log(err);
