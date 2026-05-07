@@ -4,8 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Login - Simulado ENEM</title>
+    <title>Login</title>
 
     <link rel="stylesheet" href="login.css">
 </head>
@@ -17,25 +16,52 @@
         <div class="login-card">
 
             <h1>🎓 Simulado ENEM</h1>
+
             <p>Entre na sua conta</p>
 
-            <input type="text" id="login-username" placeholder="Usuário">
-            <input type="password" id="login-senha" placeholder="Senha">
+            <input
+                type="text"
+                id="login-username"
+                placeholder="Usuário"
+            >
 
-            <button id="login-btn">Entrar</button>
+            <input
+                type="password"
+                id="login-senha"
+                placeholder="Senha"
+            >
+
+            <button id="login-btn">
+                Entrar
+            </button>
 
             <div class="divider"></div>
 
-            <button id="toggle-register" class="secondary-btn">
+            <button
+                id="toggle-register"
+                class="secondary-btn"
+            >
                 Criar conta
             </button>
 
             <div id="register-box" class="hidden">
 
-                <input type="text" id="reg-username" placeholder="Novo usuário">
-                <input type="password" id="reg-senha" placeholder="Nova senha">
+                <input
+                    type="text"
+                    id="reg-username"
+                    placeholder="Novo usuário"
+                >
 
-                <button id="register-btn">Registrar</button>
+                <input
+                    type="password"
+                    id="reg-senha"
+                    placeholder="Nova senha"
+                >
+
+                <button id="register-btn">
+                    Registrar
+                </button>
+
             </div>
 
         </div>
@@ -43,6 +69,6 @@
     </div>
 
     <script src="login.js"></script>
-</body>
 
+</body>
 </html>
