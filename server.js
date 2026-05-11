@@ -36,13 +36,23 @@ const db = new Pool({
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
-    secure: false,
-    requireTLS: true,
+    secure: true,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
     }
 });
+
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('ERRO SMTP:', error);
+    } else {
+        console.log('SMTP conectado com sucesso!');
+    }
+});
+
+
+
 // ======================
 // MIDDLEWARES
 // ======================
@@ -227,12 +237,7 @@ app.post('/register', async (req, res) => {
         const username = req.body.username?.trim();
         const email = req.body.email?.toLowerCase().trim();
         const senha = req.body.senha;
-if (!email || !senha) {
-    return res.status(400).json({
-        error: 'Email e senha obrigatórios'
-    });
-}
-        
+   
 
         // validações
         if (!username || username.length < 3) {
@@ -653,12 +658,7 @@ app.get('/teste-email', async (_, res) => {
             subject: 'Teste SMTP',
             text: 'Se chegou, está funcionando.'
         });
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('ERRO SMTP:', error);
-    } else {
-        console.log('SMTP conectado com sucesso!');
-    }
+
 });
         
 
