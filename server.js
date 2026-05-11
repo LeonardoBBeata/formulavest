@@ -300,13 +300,7 @@ if (error) {
 }
 
 console.log('Email enviado:', data);
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('ERRO SMTP:', error);
-    } else {
-        console.log('SMTP conectado com sucesso!');
-    }
-});
+
         
 
         console.log('Email enviado com sucesso:', info);
@@ -641,8 +635,6 @@ app.get('/provas', auth, async (req, res) => {
 //=======================
 app.get('/teste-email', async (_, res) => {
     try {
-app.get('/teste-email', async (_, res) => {
-    try {
         const { data, error } = await resend.emails.send({
             from: process.env.EMAIL_FROM,
             to: process.env.SMTP_USER,
@@ -651,25 +643,16 @@ app.get('/teste-email', async (_, res) => {
         });
 
         if (error) {
-            console.error(error);
+            console.error('ERRO RESEND:', error);
             return res.status(500).send('Erro ao enviar');
         }
 
-        console.log(data);
+        console.log('EMAIL OK:', data);
         res.send('Email enviado com Resend 🚀');
 
     } catch (err) {
         console.error(err);
         res.status(500).send('Erro geral');
-    }
-});
-
-        console.log(info);
-        res.send('Email enviado');
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Erro ao enviar');
     }
 });
 
