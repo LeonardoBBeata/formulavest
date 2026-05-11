@@ -1,10 +1,78 @@
 <!DOCTYPE html>
-<htmllang="pt-BR">
-4
-<head><metacharset="UTF-8"><metaname="viewport"content="width=device-width, initial-scale=1.0"><title>Login</title><linkrel="stylesheet"href="login.css">
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | FormulaVest</title>
+    <link rel="stylesheet" href="login.css">
 </head>
-<body><divclass="login-container"><divclass="login-card"><h1>🎓 Simulado ENEM</h1><inputtype="text"id="login-username"placeholder="Usuário"><inputtype="password"id="login-senha"placeholder="Senha"><buttonid="login-btn">
-Entrar</button><hr><inputtype="text"id="reg-username"placeholder="Novo usuário"><inputtype="password"id="reg-senha"placeholder="Nova senha"><buttonid="register-btn">
-Registrar</button></div></div><scriptsrc="login.js"></script>
+<body>
+
+<div class="container">
+
+    <h1>FormulaVest</h1>
+
+    <!-- LOGIN -->
+    <div id="loginBox" class="box">
+
+        <h2>Entrar</h2>
+
+        <input id="loginEmail" type="email" placeholder="Email">
+        <input id="loginSenha" type="password" placeholder="Senha">
+
+        <button id="loginBtn">
+            Entrar
+        </button>
+
+        <p>
+            Não tem conta?
+            <a href="#" id="mostrarRegistro">
+                Criar conta
+            </a>
+        </p>
+
+    </div>
+
+    <!-- REGISTRO -->
+    <div id="registerBox" class="box hidden">
+
+        <h2>Criar conta</h2>
+
+        <input id="regUsername" placeholder="Nome de usuário">
+        <input id="regEmail" type="email" placeholder="Email">
+        <input id="regSenha" type="password" placeholder="Senha (mín. 8 caracteres)">
+
+        <button id="registerBtn">
+            Registrar
+        </button>
+
+        <p>
+            Já tem conta?
+            <a href="#" id="mostrarLogin">
+                Entrar
+            </a>
+        </p>
+
+    </div>
+
+    <!-- VERIFICAÇÃO -->
+    <div id="verifyBox" class="box hidden">
+
+        <h2>Verificar Email</h2>
+
+        <p>
+            Digite o código enviado para seu email
+        </p>
+
+        <input id="verifyCode" placeholder="Código de 6 dígitos">
+
+        <button id="verifyBtn">
+            Verificar
+        </button>
+
+    </div>
+
+</div>
+
+<script src="login.js"></script>
 </body>
 </html>
