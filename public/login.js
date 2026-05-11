@@ -1,159 +1,148 @@
-const API = "";
+const API = "https://formulavest.onrender.com";
 
-let emailTemp = "";
-
-// elementos
-const loginBox = document.getElementById("loginBox");
-const registerBox = document.getElementById("registerBox");
-const verifyBox = document.getElementById("verifyBox");
-
-const mostrarRegistro = document.getElementById("mostrarRegistro");
-const mostrarLogin = document.getElementById("mostrarLogin");
-
-const loginBtn = document.getElementById("loginBtn");
-const registerBtn = document.getElementById("registerBtn");
-const verifyBtn = document.getElementById("verifyBtn");
-
-// alternar telas
-mostrarRegistro.onclick = (e)=>{
-    e.preventDefault();
-
-    loginBox.classList.add("hidden");
-    registerBox.classList.remove("hidden");
-};
-
-mostrarLogin.onclick = (e)=>{
-    e.preventDefault();
-
-    registerBox.classList.add("hidden");
-    loginBox.classList.remove("hidden");
-};
-
-// REGISTRO
-registerBtn.onclick = async ()=>{
-
-    const username =
-        document.getElementById("regUsername").value;
-
-    const email =
-        document.getElementById("regEmail").value;
-
-    const senha =
-        document.getElementById("regSenha").value;
-
-const res = await fetch(`${API}/register`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    username,
-    email,
-    senha
-  })
-});
-
-const data = await res.json();
-
-if (!res.ok) {
-  alert(data.error);
-  return;
-}
-
-alert(data.message);
-
-    const data = await res.json();
-
-    if(!res.ok){
-        alert(data.error);
-        return;
-    }
-
-    emailTemp = email;
-
-    alert(
-        "Código enviado para seu email!"
-    );
-
-    registerBox.classList.add("hidden");
-    verifyBox.classList.remove("hidden");
-};
-
-// VERIFICAR EMAIL
-verifyBtn.onclick = async ()=>{
-
-    const codigo =
-        document.getElementById("verifyCode").value;
-
-    const res = await fetch(
-        API + "/verificar-email",
-        {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                email: emailTemp,
-                codigo
-            })
-        }
-    );
-
-    const data = await res.json();
-
-    if(!res.ok){
-        alert(data.error);
-        return;
-    }
-
-    alert(
-        "Conta verificada! Faça login."
-    );
-
-    verifyBox.classList.add("hidden");
-    loginBox.classList.remove("hidden");
-};
 
 // LOGIN
-loginBtn.onclick = async ()=>{
+document.getElementById("login-btn").onclick = async () => {
+  const email =
+    document.getElementById("login-email").value;
 
-    const email =
-        document.getElementById("loginEmail").value;
+  const senha =
+    document.getElementById("login-senha").value;
 
-    const senha =
-        document.getElementById("loginSenha").value;
+  const res = await fetch(`${API}/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      senha
+    })
+  });
 
-    const res = await fetch(
-        API + "/login",
-        {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                email,
-                senha
-            })
-        }
-    );
+  const data = await res.json();
 
-    const data = await res.json();
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
 
-    if(!res.ok){
-        alert(data.error);
-        return;
+  localStorage.setItem(
+    "token",
+    data.token
+  );
+
+  localStorage.setItem(
+    "user",
+    JSON.stringify(data.user)
+  );
+
+  window.location.href = "/";
+};
+
+
+// REGISTER
+document.getElementById("register-btn").onclick = async () => {
+  const username =
+    document.getElementById(
+      "register-username"
+    ).value;
+
+  const email =
+    document.getElementById(
+      "register-email"
+    ).value;
+
+  const senha =
+    document.getElementById(
+      "register-senha"
+    ).value;
+
+  const res = await fetch(
+    `${API}/register`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+      body: JSON.stringify({
+        username,
+        email,
+        senha
+      })
     }
+  );
 
-    localStorage.setItem(
-        "token",
-        data.token
-    );
+  const data = await res.json();
 
-    localStorage.setItem(
-        "user",
-        JSON.stringify(data.user)
-    );
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
 
-    window.location.href =
-        "/";
+  alert(
+    "Código enviado para seu email."
+  );
+
+  document
+    .getElementById(
+      "verificacao-box"
+    )
+    .classList.remove("hidden");
+
+  document
+    .getElementById(
+      "verify-email"
+    )
+    .value = email;
+};
+
+
+// VERIFY EMAIL
+document.getElementById(
+  "verify-btn"
+).onclick = async () => {
+
+  const email =
+    document.getElementById(
+      "verify-email"
+    ).value;
+
+  const codigo =
+    document.getElementById(
+      "verify-code"
+    ).value;
+
+  const res = await fetch(
+    `${API}/verificar-email`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+      body: JSON.stringify({
+        email,
+        codigo
+      })
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error);
+    return;
+  }
+
+  alert(
+    "Email confirmado! Agora faça login."
+  );
+
+  document
+    .getElementById(
+      "verificacao-box"
+    )
+    .classList.add("hidden");
 };
