@@ -2,90 +2,96 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - FórmulaVest</title>
+
   <link rel="stylesheet" href="login.css">
+
+  <!-- importante: evita script rodar antes do DOM -->
+  <script src="login.js" defer></script>
 </head>
+
 <body>
 
-<div class="container">
+  <div class="container">
 
-  <h1>🎓 FórmulaVest</h1>
+    <h1>🎓 FórmulaVest</h1>
 
-  <!-- LOGIN -->
-  <div class="card">
-    <h2>Entrar</h2>
+    <!-- LOGIN -->
+    <div class="card">
+      <h2>Entrar</h2>
 
-    <input
-      type="email"
-      id="login-email"
-      placeholder="Email"
-    >
+      <input
+        type="email"
+        id="login-email"
+        placeholder="Email"
+        autocomplete="email"
+      >
 
-    <input
-      type="password"
-      id="login-senha"
-      placeholder="Senha"
-    >
+      <input
+        type="password"
+        id="login-senha"
+        placeholder="Senha"
+        autocomplete="current-password"
+      >
 
-    <button id="login-btn">
-      Entrar
-    </button>
+      <button id="login-btn" type="button">
+        Entrar
+      </button>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="card">
+      <h2>Criar conta</h2>
+
+      <input
+        type="text"
+        id="register-username"
+        placeholder="Nome de usuário"
+        autocomplete="username"
+      >
+
+      <input
+        type="email"
+        id="register-email"
+        placeholder="Email"
+        autocomplete="email"
+      >
+
+      <input
+        type="password"
+        id="register-senha"
+        placeholder="Senha (mínimo 8)"
+        autocomplete="new-password"
+      >
+
+      <button id="register-btn" type="button">
+        Registrar
+      </button>
+    </div>
+
+    <!-- VERIFICAÇÃO -->
+    <div class="card hidden" id="verificacao-box">
+      <h2>Confirmar email</h2>
+
+      <input
+        type="email"
+        id="verify-email"
+        placeholder="Email"
+      >
+
+      <input
+        type="text"
+        id="verify-code"
+        placeholder="Código de 6 dígitos"
+      >
+
+      <button id="verify-btn" type="button">
+        Verificar código
+      </button>
+    </div>
+
   </div>
 
-  <!-- REGISTER -->
-  <div class="card">
-    <h2>Criar conta</h2>
-
-    <input
-      type="text"
-      id="register-username"
-      placeholder="Nome de usuário"
-    >
-
-    <input
-      type="email"
-      id="register-email"
-      placeholder="Email"
-    >
-
-    <input
-      type="password"
-      id="register-senha"
-      placeholder="Senha (mínimo 8)"
-    >
-
-    <button id="register-btn">
-      Registrar
-    </button>
-  </div>
-
-  <!-- VERIFICAÇÃO -->
-  <div
-    class="card hidden"
-    id="verificacao-box"
-  >
-    <h2>Confirmar email</h2>
-
-    <input
-      type="email"
-      id="verify-email"
-      placeholder="Email"
-    >
-
-    <input
-      type="text"
-      id="verify-code"
-      placeholder="Código de 6 dígitos"
-    >
-
-    <button id="verify-btn">
-      Verificar código
-    </button>
-  </div>
-
-</div>
-
-<script src="login.js"></script>
 </body>
 </html>
