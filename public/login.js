@@ -1,21 +1,20 @@
 const API = "https://formulavest.onrender.com";
-console.log("LOGIN JS CARREGOU");
+
+console.log("LOGIN JS CARREGADO");
 
 window.addEventListener("DOMContentLoaded", () => {
-  // ======================
-  // ELEMENTOS
-  // ======================
   const loginBtn = document.getElementById("login-btn");
   const registerBtn = document.getElementById("register-btn");
   const verifyBtn = document.getElementById("verify-btn");
-
-  const verificacaoBox = document.getElementById("verificacao-box");
+  const box = document.getElementById("verificacao-box");
 
   // ======================
   // LOGIN
   // ======================
   if (loginBtn) {
-    loginBtn.onclick = async () => {
+    loginBtn.addEventListener("click", async () => {
+      console.log("CLICK LOGIN");
+
       try {
         const email = document.getElementById("login-email").value;
         const senha = document.getElementById("login-senha").value;
@@ -28,7 +27,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
         const data = await res.json();
 
-        console.log("LOGIN:", data);
+        console.log("LOGIN RESPONSE:", res.status, data);
 
         if (!res.ok) {
           alert(data.error || "Erro no login");
@@ -43,14 +42,14 @@ window.addEventListener("DOMContentLoaded", () => {
         console.error(err);
         alert("Erro no login");
       }
-    };
+    });
   }
 
   // ======================
   // REGISTER
   // ======================
   if (registerBtn) {
-    registerBtn.onclick = async () => {
+    registerBtn.addEventListener("click", async () => {
       try {
         const username = document.getElementById("register-username").value;
         const email = document.getElementById("register-email").value;
@@ -69,25 +68,23 @@ window.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        alert("Código enviado para seu email.");
+        alert("Código enviado para seu email");
 
-        if (verificacaoBox) {
-          verificacaoBox.classList.remove("hidden");
-        }
-
+        if (box) box.classList.remove("hidden");
         document.getElementById("verify-email").value = email;
+
       } catch (err) {
         console.error(err);
         alert("Erro no registro");
       }
-    };
+    });
   }
 
   // ======================
   // VERIFY EMAIL
   // ======================
   if (verifyBtn) {
-    verifyBtn.onclick = async () => {
+    verifyBtn.addEventListener("click", async () => {
       try {
         const email = document.getElementById("verify-email").value;
         const codigo = document.getElementById("verify-code").value;
@@ -105,15 +102,14 @@ window.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        alert("Email verificado! Agora faça login.");
+        alert("Email verificado!");
 
-        if (verificacaoBox) {
-          verificacaoBox.classList.add("hidden");
-        }
+        if (box) box.classList.add("hidden");
+
       } catch (err) {
         console.error(err);
         alert("Erro na verificação");
       }
-    };
+    });
   }
 });
