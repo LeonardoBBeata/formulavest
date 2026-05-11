@@ -547,15 +547,6 @@ if (!Array.isArray(questoes) || questoes.length === 0) {
     });
 }
 
-let acertos = 0;
-
-if (!Array.isArray(questoes) || questoes.length === 0) {
-    return res.status(400).json({
-        error: 'Questões inválidas'
-    });
-}
-
-let acertos = 0;
 
 questoes.forEach(q => {
     if (q.selecionada === q.correta) {
