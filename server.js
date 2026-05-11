@@ -637,7 +637,7 @@ app.get('/teste-email', async (_, res) => {
     try {
         const { data, error } = await resend.emails.send({
             from: process.env.EMAIL_FROM,
-            to: email,
+            to: "leonardo.beata@aluno.cps.sp.gov.br", // ou seu email fixo
             subject: 'Teste Resend',
             text: 'Se chegou, está funcionando.'
         });
@@ -655,7 +655,6 @@ app.get('/teste-email', async (_, res) => {
         res.status(500).send('Erro geral');
     }
 });
-
 // ======================
 // RANKING
 // ======================
