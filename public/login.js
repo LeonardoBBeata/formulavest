@@ -41,20 +41,26 @@ registerBtn.onclick = async ()=>{
     const senha =
         document.getElementById("regSenha").value;
 
-    const res = await fetch(
-        API + "/register",
-        {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                username,
-                email,
-                senha
-            })
-        }
-    );
+const res = await fetch(`${API}/register`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username,
+    email,
+    senha
+  })
+});
+
+const data = await res.json();
+
+if (!res.ok) {
+  alert(data.error);
+  return;
+}
+
+alert(data.message);
 
     const data = await res.json();
 
