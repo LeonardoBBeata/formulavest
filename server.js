@@ -36,7 +36,8 @@ const db = new Pool({
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === 'true',
+    secure: false,
+    requireTLS: true,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
@@ -210,21 +211,15 @@ app.get('/', (_, res) => {
 // ======================
 
 app.post('/register', async (req, res) => {
-
     try {
+        const username = req.body.username?.trim();
+        const email = req.body.email?.toLowerCase().trim();
+        const senha = req.body.senha;
 
-        const username =
-            req.body.username?.trim();
-
-        const email =
-            req.body.email?.toLowerCase().trim();
-
-        const senha =
-            req.body.senha;
-
+        // validações
         if (!username || username.length < 3) {
             return res.status(400).json({
-                error: 'Usuário inválido'
+                error: 'Usuário inválido (mínimo 3 caracteres)'
             });
         }
 
@@ -240,40 +235,41 @@ app.post('/register', async (req, res) => {
             });
         }
 
+        // verificar se já existe
         const existe = await db.query(
             `
             SELECT id
             FROM usuarios
-            WHERE username=$1
-            OR email=$2
+            WHERE username = $1
+               OR email = $2
             `,
             [username, email]
         );
 
-        if (existe.rows.length) {
+        if (existe.rows.length > 0) {
             return res.status(400).json({
                 error: 'Usuário ou email já existe'
             });
         }
 
-        const hash =
-            await bcrypt.hash(senha, 10);
+        // gerar hash da senha
+        const hash = await bcrypt.hash(senha, 10);
 
-        const codigo =
-            Math.floor(
-                100000 +
-                Math.random() * 900000
-            ).toString();
+        // gerar código de verificação
+        const codigo = Math.floor(
+            100000 + Math.random() * 900000
+        ).toString();
 
+        // salvar usuário no banco
         await db.query(
             `
-            INSERT INTO usuarios(
+            INSERT INTO usuarios (
                 username,
                 email,
                 senha,
                 codigo_verificacao
             )
-            VALUES($1,$2,$3,$4)
+            VALUES ($1, $2, $3, $4)
             `,
             [
                 username,
@@ -283,32 +279,31 @@ app.post('/register', async (req, res) => {
             ]
         );
 
-console.log("Tentando enviar email para:", email);
-        
+        console.log('Tentando enviar email para:', email);
 
-const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: 'Código de verificação',
-    text: `Seu código é: ${codigo}`
-});
+        // enviar email
+        const info = await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to: email,
+            subject: 'Código de verificação - FórmulaVest',
+            text: `Seu código de verificação é: ${codigo}`
+        });
 
-console.log("Email enviado:", info);
+        console.log('Email enviado com sucesso:', info);
 
-        res.json({
+        return res.json({
             ok: true,
-            message: 'Código enviado para o email'
+            message: 'Código enviado para seu email'
         });
 
     } catch (err) {
-        console.error('ERRO REGISTER:', err);
+        console.error('ERRO NO REGISTER:', err);
 
-        res.status(500).json({
-            error: err.message
+        return res.status(500).json({
+            error: 'Erro interno no registro'
         });
     }
 });
-
 // ======================
 // VERIFY EMAIL
 // ======================
@@ -618,6 +613,27 @@ app.get('/provas', auth, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erro histórico' });
   }
+});
+
+
+//=======================
+//teste email
+//=======================
+app.get('/teste-email', async (_, res) => {
+    try {
+        const info = await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to: process.env.SMTP_USER,
+            subject: 'Teste SMTP',
+            text: 'Se chegou, está funcionando.'
+        });
+
+        console.log(info);
+        res.send('Email enviado');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Erro ao enviar');
+    }
 });
 
 // ======================
