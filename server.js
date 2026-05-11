@@ -665,15 +665,6 @@ app.get('/teste-email', async (_, res) => {
         res.status(500).send('Erro ao enviar');
     }
 });
-        
-
-        console.log(info);
-        res.send('Email enviado');
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Erro ao enviar');
-    }
-});
 
 // ======================
 // RANKING
