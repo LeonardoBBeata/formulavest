@@ -5,9 +5,9 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const { Resend } = require('resend');
 const NodeCache = require('node-cache');
 const PDFDocument = require('pdfkit');
-const nodemailer = require('nodemailer');
 const validator = require('validator');
 const { Pool } = require('pg');
 
@@ -32,27 +32,7 @@ const db = new Pool({
 // ======================
 // EMAIL
 // ======================
-const transporter = nodemailer.createTransport({
-  host: "smtp.office365.com",
-  port: 587,
-  secure: false,
-  requireTLS: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000
-});
-
-transporter.verify((error) => {
-    if (error) {
-        console.error('ERRO SMTP:', error);
-    } else {
-        console.log('SMTP conectado com sucesso!');
-    }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 
 // ======================
@@ -307,12 +287,19 @@ app.post('/register', async (req, res) => {
         console.log('Tentando enviar email para:', email);
 
         // enviar email
-        const info = await transporter.sendMail({
-            from: process.env.EMAIL_FROM,
-            to: email,
-            subject: 'Código de verificação - FórmulaVest',
-            text: `Seu código de verificação é: ${codigo}`
-        });
+const { data, error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: 'Código de verificação - FórmulaVest',
+    text: `Seu código de verificação é: ${codigo}`
+});
+
+if (error) {
+    console.error('ERRO RESEND:', error);
+    throw new Error('Falha ao enviar email');
+}
+
+console.log('Email enviado:', data);
 transporter.verify((error, success) => {
     if (error) {
         console.error('ERRO SMTP:', error);
@@ -654,12 +641,28 @@ app.get('/provas', auth, async (req, res) => {
 //=======================
 app.get('/teste-email', async (_, res) => {
     try {
-        const info = await transporter.sendMail({
+app.get('/teste-email', async (_, res) => {
+    try {
+        const { data, error } = await resend.emails.send({
             from: process.env.EMAIL_FROM,
             to: process.env.SMTP_USER,
-            subject: 'Teste SMTP',
+            subject: 'Teste Resend',
             text: 'Se chegou, está funcionando.'
         });
+
+        if (error) {
+            console.error(error);
+            return res.status(500).send('Erro ao enviar');
+        }
+
+        console.log(data);
+        res.send('Email enviado com Resend 🚀');
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Erro geral');
+    }
+});
 
         console.log(info);
         res.send('Email enviado');
