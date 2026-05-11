@@ -6,19 +6,38 @@
     <title>Simulado ENEM</title>
 
     <link rel="stylesheet" href="style.css">
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
-    <!-- Loading -->
-    <button id="mobile-menu-btn">☰</button>
+    <!-- LOGIN (ADICIONADO) -->
+    <div id="login-box" class="card" style="max-width:400px; margin:40px auto;">
+        <h2>Login</h2>
 
+        <input
+            type="email"
+            id="login-email"
+            placeholder="Email"
+        >
+
+        <input
+            type="password"
+            id="login-senha"
+            placeholder="Senha"
+        >
+
+        <button id="login-btn">
+            Entrar
+        </button>
+    </div>
+
+    <!-- Loading -->
     <div id="loading" class="loading hidden">
         <div class="spinner"></div>
     </div>
 
-    <div class="app-container">
+    <div class="app-container hidden" id="app">
 
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -46,49 +65,27 @@
                 <h1>Gerar Prova</h1>
 
                 <div class="card">
-                    <input
-                        type="text"
-                        id="faculdade"
-                        placeholder="Faculdade"
-                    >
+                    <input type="text" id="faculdade" placeholder="Faculdade">
+                    <input type="text" id="curso" placeholder="Curso">
+                    <input type="number" id="quantidade" placeholder="Quantidade">
 
-                    <input
-                        type="text"
-                        id="curso"
-                        placeholder="Curso"
-                    >
-
-                    <input
-                        type="number"
-                        id="quantidade"
-                        placeholder="Quantidade"
-                    >
-
-                    <button id="gerar-btn">
-                        Gerar Prova
-                    </button>
+                    <button id="gerar-btn">Gerar Prova</button>
 
                     <p id="tempo-prova"></p>
                 </div>
 
                 <div id="prova-container"></div>
 
-                <button
-                    id="finalizar-btn"
-                    class="hidden success-btn"
-                >
+                <button id="finalizar-btn" class="hidden success-btn">
                     Finalizar
                 </button>
             </section>
 
-            <!-- ENEM COMPLETO -->
+            <!-- ENEM -->
             <section id="enem" class="section hidden">
                 <h1>ENEM Completo</h1>
 
-                <button id="enem-btn">
-                    Gerar ENEM
-                </button>
-
+                <button id="enem-btn">Gerar ENEM</button>
                 <div id="enem-container"></div>
             </section>
 
@@ -123,8 +120,6 @@
                 <div class="card">
                     <canvas id="graficoDesempenho"></canvas>
                 </div>
-
-                <div id="resultado"></div>
             </section>
 
             <!-- RANKING -->
@@ -137,20 +132,11 @@
             <section id="redacao" class="section hidden">
                 <h1>Redação</h1>
 
-                <input
-                    type="text"
-                    id="tema-redacao"
-                    placeholder="Tema"
-                >
+                <input type="text" id="tema-redacao" placeholder="Tema">
 
-                <textarea
-                    id="texto-redacao"
-                    placeholder="Digite sua redação aqui..."
-                ></textarea>
+                <textarea id="texto-redacao" placeholder="Digite sua redação aqui..."></textarea>
 
-                <button id="enviar-redacao">
-                    Corrigir
-                </button>
+                <button id="enviar-redacao">Corrigir</button>
 
                 <div id="feedback-redacao"></div>
             </section>
@@ -160,14 +146,8 @@
                 <h1>Configurações</h1>
 
                 <div class="card">
-                    <label for="tema-toggle">
-                        Tema Escuro
-                    </label>
-
-                    <input
-                        type="checkbox"
-                        id="tema-toggle"
-                    >
+                    <label for="tema-toggle">Tema Escuro</label>
+                    <input type="checkbox" id="tema-toggle">
                 </div>
             </section>
 
