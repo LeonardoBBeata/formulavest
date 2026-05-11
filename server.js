@@ -303,7 +303,7 @@ console.log('Email enviado:', data);
 
         
 
-        console.log('Email enviado com sucesso:', info);
+
 
         return res.json({
             ok: true,
@@ -637,7 +637,7 @@ app.get('/teste-email', async (_, res) => {
     try {
         const { data, error } = await resend.emails.send({
             from: process.env.EMAIL_FROM,
-            to: process.env.SMTP_USER,
+            to: email,
             subject: 'Teste Resend',
             text: 'Se chegou, está funcionando.'
         });
