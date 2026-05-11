@@ -281,28 +281,27 @@ app.post('/register', async (req, res) => {
             ]
         );
 
-        await transporter.sendMail({
-            from: process.env.EMAIL_FROM,
-            to: email,
-            subject: 'Código de verificação',
-            text:
-                `Seu código é: ${codigo}`
-        });
+    //    await transporter.sendMail({
+      //      from: process.env.EMAIL_FROM,
+        //    to: email,
+          //  subject: 'Código de verificação',
+            //text:
+              //  `Seu código é: ${codigo}`
+      //  });
 
-        res.json({
-            ok: true,
-            message:
-                'Código enviado para o email'
-        });
+        //res.json({
+          //  ok: true,
+            //message:
+              //  'Código enviado para o email'
+        //});
 
-    } catch (err) {
-        console.log(err);
+catch (err) {
+  console.error('ERRO REGISTER:', err);
 
-        res.status(500).json({
-            error: 'Erro registro'
-        });
-    }
-});
+  res.status(500).json({
+    error: err.message
+  });
+}
 
 // ======================
 // VERIFY EMAIL
