@@ -59,34 +59,36 @@ app.use(express.static('public'));
 // ======================
 
 async function initDB() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS usuarios(
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE,
+      senha TEXT NOT NULL,
+      verificado BOOLEAN DEFAULT FALSE,
+      codigo_verificacao TEXT,
+      xp INTEGER DEFAULT 0,
+      nivel INTEGER DEFAULT 1,
+      criado_em TIMESTAMP DEFAULT NOW()
+    )
+  `);
 
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS usuarios(
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL,
-            verificado BOOLEAN DEFAULT FALSE,
-            codigo_verificacao TEXT,
-            xp INTEGER DEFAULT 0,
-            nivel INTEGER DEFAULT 1,
-            criado_em TIMESTAMP DEFAULT NOW()
-        )
-    `);
+  await db.query(`
+    ALTER TABLE usuarios
+    ADD COLUMN IF NOT EXISTS email TEXT UNIQUE
+  `);
 
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS provas(
-            id SERIAL PRIMARY KEY,
-            usuario_id INTEGER REFERENCES usuarios(id),
-            acertos INTEGER,
-            total INTEGER,
-            percentual REAL,
-            questoes JSONB,
-            criado_em TIMESTAMP DEFAULT NOW()
-        )
-    `);
+  await db.query(`
+    ALTER TABLE usuarios
+    ADD COLUMN IF NOT EXISTS verificado BOOLEAN DEFAULT FALSE
+  `);
 
-    console.log('Banco OK');
+  await db.query(`
+    ALTER TABLE usuarios
+    ADD COLUMN IF NOT EXISTS codigo_verificacao TEXT
+  `);
+
+  console.log('Banco OK');
 }
 
 initDB().catch(err => {
