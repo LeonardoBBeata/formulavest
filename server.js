@@ -283,12 +283,17 @@ app.post('/register', async (req, res) => {
             ]
         );
 
-                await transporter.sendMail({
-            from: process.env.EMAIL_FROM,
-            to: email,
-            subject: 'Código de verificação',
-            text: `Seu código é: ${codigo}`
-        });
+console.log("Tentando enviar email para:", email);
+        
+
+const info = await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: 'Código de verificação',
+    text: `Seu código é: ${codigo}`
+});
+
+console.log("Email enviado:", info);
 
         res.json({
             ok: true,
