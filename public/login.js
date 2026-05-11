@@ -9,16 +9,20 @@ document.getElementById("login-btn").onclick = async () => {
   const senha =
     document.getElementById("login-senha").value;
 
-  const res = await fetch(`${API}/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      email,
-      senha
-    })
-  });
+const res = await fetch(`${API}/login`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email, senha })
+});
+
+const data = await res.json(); // ESSENCIAL
+
+if (!res.ok) {
+  throw new Error(data.error);
+}
+
+setUser(data.user);
+setToken(data.token);
 
   const data = await res.json();
 
