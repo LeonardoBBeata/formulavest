@@ -2,31 +2,27 @@ const API = "https://formulavest.onrender.com";
 
 const token = localStorage.getItem("token");
 
-window.addEventListener("DOMContentLoaded", () => {
-  // se não estiver logado, só bloqueia app (não quebra login page)
-  if (!token && window.location.pathname !== "/login.html") {
-    window.location.href = "/login.html";
-    return;
-  }
+console.log("APP JS CARREGADO");
 
-  // ======================
-  // ELEMENTOS SEGURADOS
-  // ======================
+// se estiver na página login, não quebra nada
+if (!token && window.location.pathname !== "/login.html") {
+  window.location.href = "/login.html";
+}
+
+window.addEventListener("DOMContentLoaded", () => {
   const logoutBtn = document.getElementById("logout-btn");
   const mobileBtn = document.getElementById("mobile-menu-btn");
   const gerarBtn = document.getElementById("gerar-btn");
   const finalizarBtn = document.getElementById("finalizar-btn");
-  const enemBtn = document.getElementById("enem-btn");
 
   // ======================
   // LOGOUT
   // ======================
   if (logoutBtn) {
-    logoutBtn.onclick = () => {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+    logoutBtn.addEventListener("click", () => {
+      localStorage.clear();
       window.location.href = "/login.html";
-    };
+    });
   }
 
   // ======================
@@ -35,16 +31,16 @@ window.addEventListener("DOMContentLoaded", () => {
   const sidebar = document.querySelector(".sidebar");
 
   if (mobileBtn && sidebar) {
-    mobileBtn.onclick = () => {
+    mobileBtn.addEventListener("click", () => {
       sidebar.classList.toggle("open");
-    };
+    });
   }
 
   // ======================
   // GERAR PROVA
   // ======================
   if (gerarBtn) {
-    gerarBtn.onclick = async () => {
+    gerarBtn.addEventListener("click", async () => {
       try {
         const faculdade = document.getElementById("faculdade").value;
         const curso = document.getElementById("curso").value;
@@ -63,23 +59,23 @@ window.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         if (!res.ok) {
-          alert(data.error || "Erro ao gerar prova");
+          alert(data.error);
           return;
         }
 
         renderProva(data.questoes);
       } catch (err) {
         console.error(err);
-        alert("Erro ao gerar prova");
+        alert("Erro gerar prova");
       }
-    };
+    });
   }
 
   // ======================
   // FINALIZAR PROVA
   // ======================
   if (finalizarBtn) {
-    finalizarBtn.onclick = async () => {
+    finalizarBtn.addEventListener("click", async () => {
       try {
         const respostas = questoes.map((q, i) => {
           const marcada = document.querySelector(
@@ -104,15 +100,13 @@ window.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         alert(
-          `Acertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(
-            1
-          )}%`
+          `Acertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(1)}%`
         );
       } catch (err) {
         console.error(err);
-        alert("Erro ao finalizar prova");
+        alert("Erro ao salvar prova");
       }
-    };
+    });
   }
 });
 
@@ -125,7 +119,6 @@ function renderProva(qs) {
   questoes = qs;
 
   const container = document.getElementById("prova-container");
-
   if (!container) return;
 
   container.innerHTML = qs
