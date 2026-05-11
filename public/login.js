@@ -1,4 +1,5 @@
 const API = "https://formulavest.onrender.com";
+console.log("LOGIN JS CARREGOU");
 
 window.addEventListener("DOMContentLoaded", () => {
   // ======================
