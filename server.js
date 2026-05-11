@@ -89,6 +89,18 @@ async function initDB() {
     ADD COLUMN IF NOT EXISTS codigo_verificacao TEXT
   `);
 
+    await db.query(`
+  CREATE TABLE IF NOT EXISTS provas(
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    acertos INTEGER,
+    total INTEGER,
+    percentual REAL,
+    questoes JSONB,
+    criado_em TIMESTAMP DEFAULT NOW()
+  )
+`);
+
   console.log('Banco OK');
 }
 
@@ -215,6 +227,12 @@ app.post('/register', async (req, res) => {
         const username = req.body.username?.trim();
         const email = req.body.email?.toLowerCase().trim();
         const senha = req.body.senha;
+if (!email || !senha) {
+    return res.status(400).json({
+        error: 'Email e senha obrigatórios'
+    });
+}
+        
 
         // validações
         if (!username || username.length < 3) {
@@ -288,6 +306,14 @@ app.post('/register', async (req, res) => {
             subject: 'Código de verificação - FórmulaVest',
             text: `Seu código de verificação é: ${codigo}`
         });
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('ERRO SMTP:', error);
+    } else {
+        console.log('SMTP conectado com sucesso!');
+    }
+});
+        
 
         console.log('Email enviado com sucesso:', info);
 
@@ -627,6 +653,14 @@ app.get('/teste-email', async (_, res) => {
             subject: 'Teste SMTP',
             text: 'Se chegou, está funcionando.'
         });
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('ERRO SMTP:', error);
+    } else {
+        console.log('SMTP conectado com sucesso!');
+    }
+});
+        
 
         console.log(info);
         res.send('Email enviado');
