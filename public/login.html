@@ -1,75 +1,88 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Login | FormulaVest</title>
-    <link rel="stylesheet" href="login.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login - FórmulaVest</title>
+  <link rel="stylesheet" href="login.css">
 </head>
 <body>
 
 <div class="container">
 
-    <h1>FormulaVest</h1>
+  <h1>🎓 FórmulaVest</h1>
 
-    <!-- LOGIN -->
-    <div id="loginBox" class="box">
+  <!-- LOGIN -->
+  <div class="card">
+    <h2>Entrar</h2>
 
-        <h2>Entrar</h2>
+    <input
+      type="email"
+      id="login-email"
+      placeholder="Email"
+    >
 
-        <input id="loginEmail" type="email" placeholder="Email">
-        <input id="loginSenha" type="password" placeholder="Senha">
+    <input
+      type="password"
+      id="login-senha"
+      placeholder="Senha"
+    >
 
-        <button id="loginBtn">
-            Entrar
-        </button>
+    <button id="login-btn">
+      Entrar
+    </button>
+  </div>
 
-        <p>
-            Não tem conta?
-            <a href="#" id="mostrarRegistro">
-                Criar conta
-            </a>
-        </p>
+  <!-- REGISTER -->
+  <div class="card">
+    <h2>Criar conta</h2>
 
-    </div>
+    <input
+      type="text"
+      id="register-username"
+      placeholder="Nome de usuário"
+    >
 
-    <!-- REGISTRO -->
-    <div id="registerBox" class="box hidden">
+    <input
+      type="email"
+      id="register-email"
+      placeholder="Email"
+    >
 
-        <h2>Criar conta</h2>
+    <input
+      type="password"
+      id="register-senha"
+      placeholder="Senha (mínimo 8)"
+    >
 
-        <input id="regUsername" placeholder="Nome de usuário">
-        <input id="regEmail" type="email" placeholder="Email">
-        <input id="regSenha" type="password" placeholder="Senha (mín. 8 caracteres)">
+    <button id="register-btn">
+      Registrar
+    </button>
+  </div>
 
-        <button id="registerBtn">
-            Registrar
-        </button>
+  <!-- VERIFICAÇÃO -->
+  <div
+    class="card hidden"
+    id="verificacao-box"
+  >
+    <h2>Confirmar email</h2>
 
-        <p>
-            Já tem conta?
-            <a href="#" id="mostrarLogin">
-                Entrar
-            </a>
-        </p>
+    <input
+      type="email"
+      id="verify-email"
+      placeholder="Email"
+    >
 
-    </div>
+    <input
+      type="text"
+      id="verify-code"
+      placeholder="Código de 6 dígitos"
+    >
 
-    <!-- VERIFICAÇÃO -->
-    <div id="verifyBox" class="box hidden">
-
-        <h2>Verificar Email</h2>
-
-        <p>
-            Digite o código enviado para seu email
-        </p>
-
-        <input id="verifyCode" placeholder="Código de 6 dígitos">
-
-        <button id="verifyBtn">
-            Verificar
-        </button>
-
-    </div>
+    <button id="verify-btn">
+      Verificar código
+    </button>
+  </div>
 
 </div>
 
