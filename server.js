@@ -39,13 +39,13 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // MIDDLEWARES
 // ======================
 
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true
+  origin: "*"
 }));
 
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 // ======================
 // DATABASE INIT
