@@ -394,6 +394,11 @@ app.post('/verificar-email', async (req, res) => {
 
 app.post('/login', async (req, res) => {
 
+  console.log("BODY LOGIN:", req.body);
+
+  try {
+
+    
     try {
 
         const email =
