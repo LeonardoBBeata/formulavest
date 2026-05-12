@@ -6,92 +6,134 @@ window.addEventListener("DOMContentLoaded", () => {
   const loginBtn = document.getElementById("login-btn");
   const registerBtn = document.getElementById("register-btn");
   const verifyBtn = document.getElementById("verify-btn");
-  const box = document.getElementById("verificacao-box");
+  const verifyBox = document.getElementById("verificacao-box");
 
-  // ======================
   // LOGIN
-  // ======================
   if (loginBtn) {
     loginBtn.addEventListener("click", async () => {
       try {
-        const email = document.getElementById("login-email").value.trim();
-        const senha = document.getElementById("login-senha").value;
+        const email = document
+          .getElementById("login-email")
+          .value.trim();
 
-        console.log("Tentando login...");
+        const senha = document
+          .getElementById("login-senha")
+          .value;
 
-        const res = await fetch(`${API}/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email,
-            senha
-          })
-        });
+        const res = await fetch(
+          `${API}/login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+            body: JSON.stringify({
+              email,
+              senha
+            })
+          }
+        );
 
-        const data = await res.json();
+        const data =
+          await res.json();
 
-        console.log("LOGIN:", data);
+        console.log(
+          "LOGIN:",
+          data
+        );
 
         if (!res.ok) {
-          alert(data.error || "Erro no login");
+          alert(
+            data.error ||
+              "Erro no login"
+          );
           return;
         }
 
-        localStorage.setItem("token", data.token);
         localStorage.setItem(
-          "user",
-          JSON.stringify(data.user)
+          "token",
+          data.token
         );
 
-        // ir para index principal
-        window.location.href = "/index.html";
+        localStorage.setItem(
+          "user",
+          JSON.stringify(
+            data.user
+          )
+        );
+
+        window.location.href =
+          "/index.html";
 
       } catch (err) {
         console.error(err);
-        alert("Erro ao fazer login");
+        alert(
+          "Erro ao fazer login"
+        );
       }
     });
   }
 
-  // ======================
   // REGISTER
-  // ======================
   if (registerBtn) {
     registerBtn.addEventListener("click", async () => {
       try {
         const username =
-          document.getElementById("register-username").value.trim();
+          document
+            .getElementById(
+              "register-username"
+            )
+            .value.trim();
 
         const email =
-          document.getElementById("register-email").value.trim();
+          document
+            .getElementById(
+              "register-email"
+            )
+            .value.trim();
 
         const senha =
-          document.getElementById("register-senha").value;
+          document
+            .getElementById(
+              "register-senha"
+            )
+            .value;
 
-        const res = await fetch(`${API}/register`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            username,
-            email,
-            senha
-          })
-        });
+        const res = await fetch(
+          `${API}/register`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+            body: JSON.stringify({
+              username,
+              email,
+              senha
+            })
+          }
+        );
 
-        const data = await res.json();
+        const data =
+          await res.json();
 
         if (!res.ok) {
-          alert(data.error || "Erro no registro");
+          alert(
+            data.error ||
+              "Erro no registro"
+          );
           return;
         }
 
-        alert("Código enviado para seu email");
+        alert(
+          "Código enviado para seu email."
+        );
 
-        box.classList.remove("hidden");
+        verifyBox.classList.remove(
+          "hidden"
+        );
 
         document.getElementById(
           "verify-email"
@@ -99,29 +141,38 @@ window.addEventListener("DOMContentLoaded", () => {
 
       } catch (err) {
         console.error(err);
-        alert("Erro no registro");
+        alert(
+          "Erro no registro"
+        );
       }
     });
   }
 
-  // ======================
   // VERIFY
-  // ======================
   if (verifyBtn) {
     verifyBtn.addEventListener("click", async () => {
       try {
         const email =
-          document.getElementById("verify-email").value.trim();
+          document
+            .getElementById(
+              "verify-email"
+            )
+            .value.trim();
 
         const codigo =
-          document.getElementById("verify-code").value.trim();
+          document
+            .getElementById(
+              "verify-code"
+            )
+            .value.trim();
 
         const res = await fetch(
           `${API}/verificar-email`,
           {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type":
+                "application/json"
             },
             body: JSON.stringify({
               email,
@@ -130,10 +181,14 @@ window.addEventListener("DOMContentLoaded", () => {
           }
         );
 
-        const data = await res.json();
+        const data =
+          await res.json();
 
         if (!res.ok) {
-          alert(data.error || "Erro");
+          alert(
+            data.error ||
+              "Erro na verificação"
+          );
           return;
         }
 
@@ -141,11 +196,15 @@ window.addEventListener("DOMContentLoaded", () => {
           "Email confirmado! Agora faça login."
         );
 
-        box.classList.add("hidden");
+        verifyBox.classList.add(
+          "hidden"
+        );
 
       } catch (err) {
         console.error(err);
-        alert("Erro na verificação");
+        alert(
+          "Erro na verificação"
+        );
       }
     });
   }
