@@ -3,9 +3,7 @@ const API = "https://formulavest.onrender.com";
 console.log("APP JS CARREGADO");
 
 const token =
-  localStorage.getItem(
-    "token"
-  );
+  localStorage.getItem("token");
 
 if (!token) {
   window.location.href =
@@ -14,37 +12,38 @@ if (!token) {
 
 let questoes = [];
 
-window.addEventListener("DOMContentLoaded", () => {
-  const logoutBtn =
-    document.getElementById(
-      "logout-btn"
-    );
+window.addEventListener(
+  "DOMContentLoaded",
+  () => {
+    const logoutBtn =
+      document.getElementById(
+        "logout-btn"
+      );
 
-  const gerarBtn =
-    document.getElementById(
-      "gerar-btn"
-    );
+    const gerarBtn =
+      document.getElementById(
+        "gerar-btn"
+      );
 
-  const finalizarBtn =
-    document.getElementById(
-      "finalizar-btn"
-    );
+    const finalizarBtn =
+      document.getElementById(
+        "finalizar-btn"
+      );
 
-  // LOGOUT
-  if (logoutBtn) {
+    // LOGOUT
     logoutBtn.onclick = () => {
       localStorage.clear();
 
       window.location.href =
         "/login.html";
     };
-  }
 
-  // GERAR PROVA
-  if (gerarBtn) {
+    // GERAR PROVA
     gerarBtn.onclick =
       async () => {
         try {
+          showLoading();
+
           const faculdade =
             document.getElementById(
               "faculdade"
@@ -64,21 +63,19 @@ window.addEventListener("DOMContentLoaded", () => {
             await fetch(
               `${API}/gerar-prova`,
               {
-                method:
-                  "POST",
+                method: "POST",
                 headers: {
                   "Content-Type":
                     "application/json",
                   Authorization:
                     `Bearer ${token}`
                 },
-                body: JSON.stringify(
-                  {
+                body:
+                  JSON.stringify({
                     faculdade,
                     curso,
                     quantidade
-                  }
-                )
+                  })
               }
             );
 
@@ -102,14 +99,15 @@ window.addEventListener("DOMContentLoaded", () => {
           );
 
           alert(
-            "Erro ao gerar prova"
+            "Erro gerar prova"
           );
+
+        } finally {
+          hideLoading();
         }
       };
-  }
 
-  // FINALIZAR
-  if (finalizarBtn) {
+    // FINALIZAR
     finalizarBtn.onclick =
       async () => {
         try {
@@ -139,35 +137,27 @@ window.addEventListener("DOMContentLoaded", () => {
             await fetch(
               `${API}/salvar-prova`,
               {
-                method:
-                  "POST",
+                method: "POST",
                 headers: {
                   "Content-Type":
                     "application/json",
                   Authorization:
                     `Bearer ${token}`
                 },
-                body: JSON.stringify(
-                  {
+                body:
+                  JSON.stringify({
                     questoes:
                       respostas
-                  }
-                )
+                  })
               }
             );
 
           const data =
             await res.json();
 
-          if (!res.ok) {
-            alert(
-              data.error
-            );
-            return;
-          }
-
           alert(
-            `Acertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(
+            `Acertos: ${data.acertos}
+Percentual: ${data.percentual.toFixed(
               1
             )}%`
           );
@@ -176,14 +166,10 @@ window.addEventListener("DOMContentLoaded", () => {
           console.error(
             err
           );
-
-          alert(
-            "Erro ao finalizar prova"
-          );
         }
       };
   }
-});
+);
 
 function renderProva(
   lista
@@ -203,13 +189,9 @@ function renderProva(
           i
         ) => `
       <div class="questao">
-        <h3>Q${
-          i + 1
-        }</h3>
+        <h3>Q${i + 1}</h3>
 
-        <p>${
-          q.enunciado
-        }</p>
+        <p>${q.enunciado}</p>
 
         ${Object.entries(
           q.opcoes
@@ -242,6 +224,26 @@ function renderProva(
       "finalizar-btn"
     )
     .classList.remove(
+      "hidden"
+    );
+}
+
+function showLoading() {
+  document
+    .getElementById(
+      "loading"
+    )
+    .classList.remove(
+      "hidden"
+    );
+}
+
+function hideLoading() {
+  document
+    .getElementById(
+      "loading"
+    )
+    .classList.add(
       "hidden"
     );
 }
