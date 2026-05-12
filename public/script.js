@@ -53,34 +53,46 @@ window.addEventListener("DOMContentLoaded", () => {
   // GERAR PROVA
   // ======================
   gerarBtn.onclick = async () => {
-    try {
-      showLoading();
+  try {
+    const faculdade =
+      document.getElementById("faculdade").value;
 
-      const faculdade =
-        document.getElementById("faculdade").value;
+    const curso =
+      document.getElementById("curso").value;
 
-      const curso =
-        document.getElementById("curso").value;
+    const quantidade =
+      document.getElementById("quantidade").value || 10;
 
-      const quantidade =
-        document.getElementById("quantidade").value || 10;
+    const res = await fetch(
+      `${API}/gerar-prova`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          faculdade,
+          curso,
+          quantidade
+        })
+      }
+    );
 
-      const res = await fetch(
-        `${API}/gerar-prova`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization:
-              `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            faculdade,
-            curso,
-            quantidade
-          })
-        }
-      );
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error);
+      return;
+    }
+
+    renderProva(data.questoes);
+
+  } catch (err) {
+    console.error(err);
+    alert("Erro gerar prova");
+  }
+};
 
       const data = await res.json();
 
@@ -95,8 +107,6 @@ window.addEventListener("DOMContentLoaded", () => {
       console.error(err);
       alert("Erro gerar prova");
 
-    } finally {
-      hideLoading();
     }
   };
 
@@ -195,18 +205,4 @@ function renderProva(lista) {
     .classList.remove("hidden");
 }
 
-function showLoading() {
-  const el =
-    document.getElementById("loading");
 
-  if (el)
-    el.classList.remove("hidden");
-}
-
-function hideLoading() {
-  const el =
-    document.getElementById("loading");
-
-  if (el)
-    el.classList.add("hidden");
-}
