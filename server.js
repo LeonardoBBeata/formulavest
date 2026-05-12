@@ -388,92 +388,79 @@ app.post('/verificar-email', async (req, res) => {
     }
 });
 
+
 // ======================
 // LOGIN
 // ======================
 
 app.post('/login', async (req, res) => {
-
   console.log("BODY LOGIN:", req.body);
 
   try {
+    const email = req.body.email?.toLowerCase().trim();
+    const senha = req.body.senha;
 
-    
-    try {
-
-        const email =
-            req.body.email?.toLowerCase().trim();
-
-        const {
-            senha
-        } = req.body;
-
-        const result =
-            await db.query(
-                `
-                SELECT *
-                FROM usuarios
-                WHERE email=$1
-                `,
-                [email]
-            );
-
-        const user =
-            result.rows[0];
-
-        if (!user) {
-            return res.status(401).json({
-                error:
-                    'Email não encontrado'
-            });
-        }
-
-        if (!user.verificado) {
-            return res.status(403).json({
-                error:
-                    'Verifique seu email primeiro'
-            });
-        }
-
-        const ok =
-            await bcrypt.compare(
-                senha,
-                user.senha
-            );
-
-        if (!ok) {
-            return res.status(401).json({
-                error:
-                    'Senha incorreta'
-            });
-        }
-
-        const token =
-            gerarToken(user);
-
-        res.json({
-            ok: true,
-            token,
-            user: {
-                id: user.id,
-                username:
-                    user.username,
-                xp: user.xp,
-                nivel:
-                    user.nivel
-            }
-        });
-
-    } catch (err) {
-        console.log(err);
-
-        res.status(500).json({
-            error:
-                'Erro login'
-        });
+    if (!email || !senha) {
+      return res.status(400).json({
+        error: "Email e senha obrigatórios"
+      });
     }
+
+    const result = await db.query(
+      `
+      SELECT *
+      FROM usuarios
+      WHERE email = $1
+      `,
+      [email]
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({
+        error: "Email não encontrado"
+      });
+    }
+
+    if (!user.verificado) {
+      return res.status(403).json({
+        error: "Verifique seu email primeiro"
+      });
+    }
+
+    const senhaOk = await bcrypt.compare(
+      senha,
+      user.senha
+    );
+
+    if (!senhaOk) {
+      return res.status(401).json({
+        error: "Senha incorreta"
+      });
+    }
+
+    const token = gerarToken(user);
+
+    return res.json({
+      ok: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        xp: user.xp,
+        nivel: user.nivel
+      }
+    });
+
+  } catch (err) {
+    console.error("ERRO LOGIN:", err);
+
+    return res.status(500).json({
+      error: "Erro interno no login"
+    });
+  }
 });
-// server.js completo atualizado (PARTE 2/2)
 
 // ======================
 // GERAR PROVA
