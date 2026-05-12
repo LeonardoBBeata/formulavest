@@ -53,46 +53,31 @@ window.addEventListener("DOMContentLoaded", () => {
   // GERAR PROVA
   // ======================
   gerarBtn.onclick = async () => {
-  try {
-    const faculdade =
-      document.getElementById("faculdade").value;
+    try {
+      const faculdade =
+        document.getElementById("faculdade").value;
 
-    const curso =
-      document.getElementById("curso").value;
+      const curso =
+        document.getElementById("curso").value;
 
-    const quantidade =
-      document.getElementById("quantidade").value || 10;
+      const quantidade =
+        document.getElementById("quantidade").value || 10;
 
-    const res = await fetch(
-      `${API}/gerar-prova`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          faculdade,
-          curso,
-          quantidade
-        })
-      }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error);
-      return;
-    }
-
-    renderProva(data.questoes);
-
-  } catch (err) {
-    console.error(err);
-    alert("Erro gerar prova");
-  }
-};
+      const res = await fetch(
+        `${API}/gerar-prova`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            faculdade,
+            curso,
+            quantidade
+          })
+        }
+      );
 
       const data = await res.json();
 
@@ -106,7 +91,6 @@ window.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       console.error(err);
       alert("Erro gerar prova");
-
     }
   };
 
@@ -115,31 +99,26 @@ window.addEventListener("DOMContentLoaded", () => {
   // ======================
   finalizarBtn.onclick = async () => {
     try {
-      const respostas =
-        questoes.map((q, i) => {
-          const marcada =
-            document.querySelector(
-              `input[name="q${i}"]:checked`
-            );
+      const respostas = questoes.map((q, i) => {
+        const marcada = document.querySelector(
+          `input[name="q${i}"]:checked`
+        );
 
-          return {
-            correta: q.correta,
-            selecionada:
-              marcada
-                ? marcada.value
-                : null
-          };
-        });
+        return {
+          correta: q.correta,
+          selecionada: marcada
+            ? marcada.value
+            : null
+        };
+      });
 
       const res = await fetch(
         `${API}/salvar-prova`,
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
             questoes: respostas
@@ -178,7 +157,6 @@ function renderProva(lista) {
       (q, i) => `
       <div class="questao">
         <h3>Q${i + 1}</h3>
-
         <p>${q.enunciado}</p>
 
         ${Object.entries(q.opcoes)
@@ -204,5 +182,3 @@ function renderProva(lista) {
     .getElementById("finalizar-btn")
     .classList.remove("hidden");
 }
-
-
