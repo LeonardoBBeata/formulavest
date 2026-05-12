@@ -2,178 +2,160 @@ const API = "https://formulavest.onrender.com";
 
 console.log("APP JS CARREGADO");
 
-const token =
-  localStorage.getItem("token");
+const token = localStorage.getItem("token");
 
 if (!token) {
-  window.location.href =
-    "/login.html";
+  window.location.href = "/login.html";
 }
 
 let questoes = [];
 
-window.addEventListener(
-  "DOMContentLoaded",
-  () => {
-    const logoutBtn =
-      document.getElementById(
-        "logout-btn"
+window.addEventListener("DOMContentLoaded", () => {
+  const logoutBtn = document.getElementById("logout-btn");
+  const gerarBtn = document.getElementById("gerar-btn");
+  const finalizarBtn = document.getElementById("finalizar-btn");
+
+  // ======================
+  // TROCAR ABAS
+  // ======================
+  const menuItems = document.querySelectorAll(".sidebar li");
+  const sections = document.querySelectorAll(".section");
+
+  menuItems.forEach(item => {
+    item.addEventListener("click", () => {
+      const alvo = item.dataset.section;
+
+      menuItems.forEach(i =>
+        i.classList.remove("active")
       );
 
-    const gerarBtn =
-      document.getElementById(
-        "gerar-btn"
+      sections.forEach(sec =>
+        sec.classList.add("hidden")
       );
 
-    const finalizarBtn =
-      document.getElementById(
-        "finalizar-btn"
-      );
+      item.classList.add("active");
 
-    // LOGOUT
-    logoutBtn.onclick = () => {
-      localStorage.clear();
+      document
+        .getElementById(alvo)
+        .classList.remove("hidden");
+    });
+  });
 
-      window.location.href =
-        "/login.html";
-    };
+  // ======================
+  // LOGOUT
+  // ======================
+  logoutBtn.onclick = () => {
+    localStorage.clear();
+    window.location.href = "/login.html";
+  };
 
-    // GERAR PROVA
-    gerarBtn.onclick =
-      async () => {
-        try {
-          showLoading();
+  // ======================
+  // GERAR PROVA
+  // ======================
+  gerarBtn.onclick = async () => {
+    try {
+      showLoading();
 
-          const faculdade =
-            document.getElementById(
-              "faculdade"
-            ).value;
+      const faculdade =
+        document.getElementById("faculdade").value;
 
-          const curso =
-            document.getElementById(
-              "curso"
-            ).value;
+      const curso =
+        document.getElementById("curso").value;
 
-          const quantidade =
-            document.getElementById(
-              "quantidade"
-            ).value || 10;
+      const quantidade =
+        document.getElementById("quantidade").value || 10;
 
-          const res =
-            await fetch(
-              `${API}/gerar-prova`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                  Authorization:
-                    `Bearer ${token}`
-                },
-                body:
-                  JSON.stringify({
-                    faculdade,
-                    curso,
-                    quantidade
-                  })
-              }
-            );
-
-          const data =
-            await res.json();
-
-          if (!res.ok) {
-            alert(
-              data.error
-            );
-            return;
-          }
-
-          renderProva(
-            data.questoes
-          );
-
-        } catch (err) {
-          console.error(
-            err
-          );
-
-          alert(
-            "Erro gerar prova"
-          );
-
-        } finally {
-          hideLoading();
+      const res = await fetch(
+        `${API}/gerar-prova`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:
+              `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            faculdade,
+            curso,
+            quantidade
+          })
         }
-      };
+      );
 
-    // FINALIZAR
-    finalizarBtn.onclick =
-      async () => {
-        try {
-          const respostas =
-            questoes.map(
-              (
-                q,
-                i
-              ) => {
-                const marcada =
-                  document.querySelector(
-                    `input[name="q${i}"]:checked`
-                  );
+      const data = await res.json();
 
-                return {
-                  correta:
-                    q.correta,
-                  selecionada:
-                    marcada
-                      ? marcada.value
-                      : null
-                };
-              }
+      if (!res.ok) {
+        alert(data.error);
+        return;
+      }
+
+      renderProva(data.questoes);
+
+    } catch (err) {
+      console.error(err);
+      alert("Erro gerar prova");
+
+    } finally {
+      hideLoading();
+    }
+  };
+
+  // ======================
+  // FINALIZAR
+  // ======================
+  finalizarBtn.onclick = async () => {
+    try {
+      const respostas =
+        questoes.map((q, i) => {
+          const marcada =
+            document.querySelector(
+              `input[name="q${i}"]:checked`
             );
 
-          const res =
-            await fetch(
-              `${API}/salvar-prova`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                  Authorization:
-                    `Bearer ${token}`
-                },
-                body:
-                  JSON.stringify({
-                    questoes:
-                      respostas
-                  })
-              }
-            );
+          return {
+            correta: q.correta,
+            selecionada:
+              marcada
+                ? marcada.value
+                : null
+          };
+        });
 
-          const data =
-            await res.json();
-
-          alert(
-            `Acertos: ${data.acertos}
-Percentual: ${data.percentual.toFixed(
-              1
-            )}%`
-          );
-
-        } catch (err) {
-          console.error(
-            err
-          );
+      const res = await fetch(
+        `${API}/salvar-prova`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            questoes: respostas
+          })
         }
-      };
-  }
-);
+      );
 
-function renderProva(
-  lista
-) {
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error);
+        return;
+      }
+
+      alert(
+        `Acertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(1)}%`
+      );
+
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao finalizar");
+    }
+  };
+});
+
+function renderProva(lista) {
   questoes = lista;
 
   const container =
@@ -181,28 +163,17 @@ function renderProva(
       "prova-container"
     );
 
-  container.innerHTML =
-    lista
-      .map(
-        (
-          q,
-          i
-        ) => `
+  container.innerHTML = lista
+    .map(
+      (q, i) => `
       <div class="questao">
         <h3>Q${i + 1}</h3>
 
         <p>${q.enunciado}</p>
 
-        ${Object.entries(
-          q.opcoes
-        )
+        ${Object.entries(q.opcoes)
           .map(
-            (
-              [
-                letra,
-                texto
-              ]
-            ) => `
+            ([letra, texto]) => `
             <label class="alternativa">
               ${letra}) ${texto}
               <input
@@ -216,34 +187,26 @@ function renderProva(
           .join("")}
       </div>
     `
-      )
-      .join("");
+    )
+    .join("");
 
   document
-    .getElementById(
-      "finalizar-btn"
-    )
-    .classList.remove(
-      "hidden"
-    );
+    .getElementById("finalizar-btn")
+    .classList.remove("hidden");
 }
 
 function showLoading() {
-  document
-    .getElementById(
-      "loading"
-    )
-    .classList.remove(
-      "hidden"
-    );
+  const el =
+    document.getElementById("loading");
+
+  if (el)
+    el.classList.remove("hidden");
 }
 
 function hideLoading() {
-  document
-    .getElementById(
-      "loading"
-    )
-    .classList.add(
-      "hidden"
-    );
+  const el =
+    document.getElementById("loading");
+
+  if (el)
+    el.classList.add("hidden");
 }
