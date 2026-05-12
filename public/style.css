@@ -261,3 +261,11 @@ button:hover {
         padding: 90px 20px;
     }
 }
+
+.section {
+  display: block;
+}
+
+.section.hidden {
+  display: none;
+}
