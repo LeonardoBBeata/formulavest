@@ -93,6 +93,21 @@ async function initDB() {
   )
 `);
 
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS login_codigo TEXT
+`);
+
+await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS reset_token TEXT
+`);
+
+await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS reset_expira TIMESTAMP
+`);
+
   console.log('Banco OK');
 }
 
@@ -404,73 +419,312 @@ app.post('/verificar-email', async (req, res) => {
 // ======================
 
 app.post('/login', async (req, res) => {
-  console.log("BODY LOGIN:", req.body);
-
   try {
-    const email = req.body.email?.toLowerCase().trim();
-    const senha = req.body.senha;
+    const email =
+      req.body.email
+        ?.toLowerCase()
+        .trim();
 
-    if (!email || !senha) {
-      return res.status(400).json({
-        error: "Email e senha obrigatórios"
-      });
-    }
+    const senha =
+      req.body.senha;
 
-    const result = await db.query(
-      `
-      SELECT *
-      FROM usuarios
-      WHERE email = $1
-      `,
-      [email]
-    );
+    const result =
+      await db.query(
+        `
+        SELECT *
+        FROM usuarios
+        WHERE email=$1
+        `,
+        [email]
+      );
 
-    const user = result.rows[0];
+    const user =
+      result.rows[0];
 
     if (!user) {
       return res.status(401).json({
-        error: "Email não encontrado"
+        error: 'Email não encontrado'
       });
     }
 
-    if (!user.verificado) {
-      return res.status(403).json({
-        error: "Verifique seu email primeiro"
-      });
-    }
-
-    const senhaOk = await bcrypt.compare(
-      senha,
-      user.senha
-    );
+    const senhaOk =
+      await bcrypt.compare(
+        senha,
+        user.senha
+      );
 
     if (!senhaOk) {
       return res.status(401).json({
-        error: "Senha incorreta"
+        error: 'Senha incorreta'
       });
     }
 
-    const token = gerarToken(user);
+    const codigo =
+      Math.floor(
+        100000 +
+        Math.random() * 900000
+      ).toString();
 
-    return res.json({
+    await db.query(
+      `
+      UPDATE usuarios
+      SET login_codigo=$1
+      WHERE id=$2
+      `,
+      [
+        codigo,
+        user.id
+      ]
+    );
+
+    await resend.emails.send({
+      from:
+        process.env.EMAIL_FROM,
+      to: user.email,
+      subject:
+        'Código de login',
+      text:
+        `Seu código é: ${codigo}`
+    });
+
+    res.json({
       ok: true,
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        xp: user.xp,
-        nivel: user.nivel
-      }
+      precisaCodigo: true
     });
 
   } catch (err) {
-    console.error("ERRO LOGIN:", err);
+    console.error(err);
 
-    return res.status(500).json({
-      error: "Erro interno no login"
+    res.status(500).json({
+      error:
+        'Erro login'
     });
   }
 });
+
+// ======================
+// CONFIRMAR LOGIN
+// ======================
+app.post(
+  '/confirmar-login',
+  async (req, res) => {
+    try {
+      const {
+        email,
+        codigo
+      } = req.body;
+
+      const result =
+        await db.query(
+          `
+          SELECT *
+          FROM usuarios
+          WHERE email=$1
+          `,
+          [email]
+        );
+
+      const user =
+        result.rows[0];
+
+      if (
+        !user ||
+        user.login_codigo !==
+          codigo
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              'Código inválido'
+          });
+      }
+
+      await db.query(
+        `
+        UPDATE usuarios
+        SET login_codigo=NULL
+        WHERE id=$1
+        `,
+        [user.id]
+      );
+
+      const token =
+        gerarToken(user);
+
+      res.json({
+        ok: true,
+        token
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro confirmação'
+      });
+    }
+  }
+);
+
+// ======================
+// ESQUECI MINHA SENHA
+// ======================
+const crypto =
+  require('crypto');
+
+app.post(
+  '/esqueci-senha',
+  async (req, res) => {
+    try {
+      const email =
+        req.body.email
+          ?.toLowerCase()
+          .trim();
+
+      const result =
+        await db.query(
+          `
+          SELECT *
+          FROM usuarios
+          WHERE email=$1
+          `,
+          [email]
+        );
+
+      const user =
+        result.rows[0];
+
+      if (!user) {
+        return res.json({
+          ok: true
+        });
+      }
+
+      const token =
+        crypto
+          .randomBytes(32)
+          .toString('hex');
+
+      await db.query(
+        `
+        UPDATE usuarios
+        SET
+          reset_token=$1,
+          reset_expira=
+            NOW() +
+            INTERVAL '1 hour'
+        WHERE id=$2
+        `,
+        [
+          token,
+          user.id
+        ]
+      );
+
+      const link =
+`https://formulavest.onrender.com/reset-password.html?token=${token}`;
+
+      await resend.emails.send({
+        from:
+          process.env.EMAIL_FROM,
+        to: user.email,
+        subject:
+          'Recuperar senha',
+        html:
+          `<a href="${link}">
+            Clique aqui para redefinir sua senha
+          </a>`
+      });
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro recuperação'
+      });
+    }
+  }
+);
+
+// ======================
+// REDEFINIR SENHA
+// ======================
+app.post(
+  '/reset-password',
+  async (req, res) => {
+    try {
+      const {
+        token,
+        novaSenha
+      } = req.body;
+
+      const result =
+        await db.query(
+          `
+          SELECT *
+          FROM usuarios
+          WHERE
+            reset_token=$1
+            AND
+            reset_expira > NOW()
+          `,
+          [token]
+        );
+
+      const user =
+        result.rows[0];
+
+      if (!user) {
+        return res
+          .status(400)
+          .json({
+            error:
+              'Link inválido'
+          });
+      }
+
+      const hash =
+        await bcrypt.hash(
+          novaSenha,
+          10
+        );
+
+      await db.query(
+        `
+        UPDATE usuarios
+        SET
+          senha=$1,
+          reset_token=NULL,
+          reset_expira=NULL
+        WHERE id=$2
+        `,
+        [
+          hash,
+          user.id
+        ]
+      );
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro reset'
+      });
+    }
+  }
+);
 
 
 // ======================
