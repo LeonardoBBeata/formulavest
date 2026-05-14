@@ -2,96 +2,91 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - FórmulaVest</title>
-
+  <title>FórmulaVest</title>
   <link rel="stylesheet" href="login.css">
-
-  <!-- importante: evita script rodar antes do DOM -->
   <script src="login.js" defer></script>
 </head>
-
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <h1>🎓 FórmulaVest</h1>
+  <!-- LOGIN -->
+  <div id="login-box" class="card">
+    <h1>Entrar</h1>
 
-    <!-- LOGIN -->
-    <div class="card">
-      <h2>Entrar</h2>
+    <input id="login-email" type="email" placeholder="Email">
+    <input id="login-senha" type="password" placeholder="Senha">
 
-      <input
-        type="email"
-        id="login-email"
-        placeholder="Email"
-        autocomplete="email"
-      >
+    <button id="login-btn">Entrar</button>
 
-      <input
-        type="password"
-        id="login-senha"
-        placeholder="Senha"
-        autocomplete="current-password"
-      >
+    <p class="link" id="abrir-cadastro">
+      Criar conta
+    </p>
 
-      <button id="login-btn" type="button">
-        Entrar
-      </button>
-    </div>
-
-    <!-- REGISTER -->
-    <div class="card">
-      <h2>Criar conta</h2>
-
-      <input
-        type="text"
-        id="register-username"
-        placeholder="Nome de usuário"
-        autocomplete="username"
-      >
-
-      <input
-        type="email"
-        id="register-email"
-        placeholder="Email"
-        autocomplete="email"
-      >
-
-      <input
-        type="password"
-        id="register-senha"
-        placeholder="Senha (mínimo 8)"
-        autocomplete="new-password"
-      >
-
-      <button id="register-btn" type="button">
-        Registrar
-      </button>
-    </div>
-
-    <!-- VERIFICAÇÃO -->
-    <div class="card hidden" id="verificacao-box">
-      <h2>Confirmar email</h2>
-
-      <input
-        type="email"
-        id="verify-email"
-        placeholder="Email"
-      >
-
-      <input
-        type="text"
-        id="verify-code"
-        placeholder="Código de 6 dígitos"
-      >
-
-      <button id="verify-btn" type="button">
-        Verificar código
-      </button>
-    </div>
-
+    <p class="link" id="abrir-recuperar">
+      Esqueci minha senha
+    </p>
   </div>
+
+
+  <!-- CONFIRMAR LOGIN -->
+  <div id="codigo-login-box" class="card hidden">
+    <h1>Confirmar Login</h1>
+
+    <input id="codigo-login" placeholder="Código recebido">
+
+    <button id="confirmar-login-btn">
+      Confirmar
+    </button>
+  </div>
+
+
+  <!-- CADASTRO -->
+  <div id="cadastro-box" class="card hidden">
+    <h1>Criar conta</h1>
+
+    <input id="cadastro-user" placeholder="Usuário">
+    <input id="cadastro-email" placeholder="Email">
+    <input id="cadastro-senha" type="password" placeholder="Senha">
+
+    <button id="cadastro-btn">
+      Cadastrar
+    </button>
+
+    <p class="link voltar-login">
+      Voltar
+    </p>
+  </div>
+
+
+  <!-- CONFIRMAR CADASTRO -->
+  <div id="codigo-cadastro-box" class="card hidden">
+    <h1>Confirmar cadastro</h1>
+
+    <input id="codigo-cadastro" placeholder="Código">
+
+    <button id="confirmar-cadastro-btn">
+      Confirmar
+    </button>
+  </div>
+
+
+  <!-- RECUPERAR SENHA -->
+  <div id="recuperar-box" class="card hidden">
+    <h1>Recuperar senha</h1>
+
+    <input id="recuperar-email" placeholder="Seu email">
+
+    <button id="recuperar-btn">
+      Enviar link
+    </button>
+
+    <p class="link voltar-login">
+      Voltar
+    </p>
+  </div>
+
+</div>
 
 </body>
 </html>
