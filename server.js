@@ -577,6 +577,68 @@ Alterar senha
   }
 });
 
+app.post(
+  "/reset-password",
+  async (req, res) => {
+    try {
+      const {
+        token,
+        senha
+      } = req.body;
+
+      if (
+        !senha ||
+        senha.length < 8
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Senha muito curta"
+          });
+      }
+
+      const decoded =
+        jwt.verify(
+          token,
+          process.env.JWT_SECRET
+        );
+
+      const email =
+        decoded.email;
+
+      const hash =
+        await bcrypt.hash(
+          senha,
+          10
+        );
+
+      await db.query(
+        `
+        UPDATE usuarios
+        SET senha = $1
+        WHERE email = $2
+        `,
+        [hash, email]
+      );
+
+      res.json({
+        ok: true,
+        message:
+          "Senha alterada"
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(400).json({
+        error:
+          "Token inválido ou expirado"
+      });
+    }
+  }
+);
+
 
 // ======================
 // GERAR PROVÃO PAULISTA
