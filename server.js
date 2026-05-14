@@ -154,21 +154,14 @@ async function chamarIA(prompt) {
     console.log("Enviando para IA...");
 
     const response = await axios.post(
-      "https://router.huggingface.co/v1/chat/completions",
+      "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
       {
-        model: "deepseek-ai/DeepSeek-V3.2:fastest",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Você é especialista em ENEM. Responda SOMENTE JSON válido."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 2000,
+          temperature: 0.7,
+          return_full_text: false
+        }
       },
       {
         headers: {
@@ -179,11 +172,10 @@ async function chamarIA(prompt) {
       }
     );
 
-    const texto =
-      response.data?.choices?.[0]?.message?.content;
+    console.log(response.data);
 
-    console.log("RESPOSTA IA:");
-    console.log(texto);
+    const texto =
+      response.data?.[0]?.generated_text;
 
     if (!texto) {
       throw new Error("IA retornou vazio");
