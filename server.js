@@ -208,6 +208,10 @@ function extrairJSONSeguro(texto) {
     }
 }
 
+
+
+
+
 // ======================
 // HEALTH
 // ======================
@@ -467,6 +471,62 @@ app.post('/login', async (req, res) => {
     });
   }
 });
+
+
+// ======================
+// GERAR PROVÃO PAULISTA
+// ======================
+app.post('/gerar-provao', auth, async (req, res) => {
+  try {
+    const resposta = await chamarIA(`
+Crie uma prova completa baseada no estilo do Provão Paulista.
+
+Use provas anteriores como referência.
+
+RETORNE SOMENTE JSON:
+
+{
+  "questoes": [
+    {
+      "enunciado": "",
+      "opcoes": {
+        "A": "",
+        "B": "",
+        "C": "",
+        "D": "",
+        "E": ""
+      },
+      "correta": "A"
+    }
+  ]
+}
+`);
+
+    const json = extrairJSONSeguro(resposta);
+
+    if (!json?.questoes) {
+      return res.status(500).json({
+        error: "IA inválida"
+      });
+    }
+
+    res.json({
+      questoes: json.questoes
+    });
+
+  } catch (err) {
+    console.error(
+      "ERRO PROVÃO:",
+      err
+    );
+
+    res.status(500).json({
+      error: "Erro gerar Provão"
+    });
+  }
+});
+
+
 
 // ======================
 // GERAR PROVA
