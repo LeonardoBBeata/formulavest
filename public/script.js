@@ -11,161 +11,303 @@ if (!token) {
 let questoes = [];
 
 window.addEventListener("DOMContentLoaded", () => {
+  // ======================
+  // ELEMENTOS
+  // ======================
   const logoutBtn = document.getElementById("logout-btn");
-  const gerarBtn = document.getElementById("gerar-btn");
-  const finalizarBtn = document.getElementById("finalizar-btn");
+
+  const gerarEnemBtn =
+    document.getElementById(
+      "gerar-enem-btn"
+    );
+
+  const gerarProvaoBtn =
+    document.getElementById(
+      "gerar-provao-btn"
+    );
+
+  const finalizarEnemBtn =
+    document.getElementById(
+      "finalizar-enem-btn"
+    );
+
+  const finalizarProvaoBtn =
+    document.getElementById(
+      "finalizar-provao-btn"
+    );
+
+  const enviarRedacaoBtn =
+    document.getElementById(
+      "enviar-redacao"
+    );
 
   // ======================
   // TROCAR ABAS
   // ======================
-  const menuItems = document.querySelectorAll(".sidebar li");
-  const sections = document.querySelectorAll(".section");
+  const menuItems =
+    document.querySelectorAll(
+      ".sidebar li"
+    );
+
+  const sections =
+    document.querySelectorAll(
+      ".section"
+    );
 
   menuItems.forEach(item => {
-    item.addEventListener("click", () => {
-      const alvo = item.dataset.section;
+    item.addEventListener(
+      "click",
+      () => {
+        const alvo =
+          item.dataset.section;
 
-      menuItems.forEach(i =>
-        i.classList.remove("active")
-      );
+        menuItems.forEach(i =>
+          i.classList.remove(
+            "active"
+          )
+        );
 
-      sections.forEach(sec =>
-        sec.classList.add("hidden")
-      );
+        sections.forEach(sec =>
+          sec.classList.add(
+            "hidden"
+          )
+        );
 
-      item.classList.add("active");
+        item.classList.add(
+          "active"
+        );
 
-      document
-        .getElementById(alvo)
-        .classList.remove("hidden");
-    });
+        document
+          .getElementById(
+            alvo
+          )
+          .classList.remove(
+            "hidden"
+          );
+      }
+    );
   });
 
   // ======================
   // LOGOUT
   // ======================
-  logoutBtn.onclick = () => {
-    localStorage.clear();
-    window.location.href = "/login.html";
-  };
+  if (logoutBtn) {
+    logoutBtn.onclick = () => {
+      localStorage.clear();
+
+      window.location.href =
+        "/login.html";
+    };
+  }
 
   // ======================
-  // GERAR PROVA
+  // GERAR ENEM
   // ======================
-  gerarBtn.onclick = async () => {
-    try {
-      const faculdade =
-        document.getElementById("faculdade").value;
-
-      const curso =
-        document.getElementById("curso").value;
-
-      const quantidade =
-        document.getElementById("quantidade").value || 10;
-
-      const res = await fetch(
-        `${API}/gerar-prova`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            faculdade,
-            curso,
-            quantidade
-          })
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error);
-        return;
-      }
-
-      renderProva(data.questoes);
-
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao gerar prova");
-    }
-  };
-
-  // ======================
-  // FINALIZAR
-  // ======================
-  finalizarBtn.onclick = async () => {
-    try {
-      const respostas =
-        questoes.map((q, i) => {
-          const marcada =
-            document.querySelector(
-              `input[name="q${i}"]:checked`
+  if (gerarEnemBtn) {
+    gerarEnemBtn.onclick =
+      async () => {
+        try {
+          const res =
+            await fetch(
+              `${API}/gerar-enem`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`
+                }
+              }
             );
 
-          return {
-            correta: q.correta,
-            selecionada:
-              marcada
-                ? marcada.value
-                : null
-          };
-        });
+          const data =
+            await res.json();
 
-      const res = await fetch(
-        `${API}/salvar-prova`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            questoes: respostas
-          })
+          if (!res.ok) {
+            alert(
+              data.error
+            );
+            return;
+          }
+
+          renderProva(
+            data.questoes,
+            "enem-container",
+            "finalizar-enem-btn"
+          );
+
+        } catch (err) {
+          console.error(
+            err
+          );
+
+          alert(
+            "Erro ao gerar ENEM"
+          );
         }
-      );
+      };
+  }
 
-      const data = await res.json();
+  // ======================
+  // GERAR PROVÃO
+  // ======================
+  if (gerarProvaoBtn) {
+    gerarProvaoBtn.onclick =
+      async () => {
+        try {
+          const res =
+            await fetch(
+              `${API}/gerar-provao`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`
+                }
+              }
+            );
 
-      if (!res.ok) {
-        alert(data.error);
-        return;
-      }
+          const data =
+            await res.json();
 
-      alert(
-        `Acertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(1)}%`
-      );
+          if (!res.ok) {
+            alert(
+              data.error
+            );
+            return;
+          }
 
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao finalizar");
-    }
-  };
+          renderProva(
+            data.questoes,
+            "provao-container",
+            "finalizar-provao-btn"
+          );
+
+        } catch (err) {
+          console.error(
+            err
+          );
+
+          alert(
+            "Erro ao gerar Provão"
+          );
+        }
+      };
+  }
+
+  // ======================
+  // FINALIZAR ENEM
+  // ======================
+  if (finalizarEnemBtn) {
+    finalizarEnemBtn.onclick =
+      salvarResultado;
+  }
+
+  // ======================
+  // FINALIZAR PROVÃO
+  // ======================
+  if (finalizarProvaoBtn) {
+    finalizarProvaoBtn.onclick =
+      salvarResultado;
+  }
+
+  // ======================
+  // CORRIGIR REDAÇÃO
+  // ======================
+  if (enviarRedacaoBtn) {
+    enviarRedacaoBtn.onclick =
+      async () => {
+        try {
+          const tema =
+            document.getElementById(
+              "tema-redacao"
+            ).value;
+
+          const texto =
+            document.getElementById(
+              "texto-redacao"
+            ).value;
+
+          const res =
+            await fetch(
+              `${API}/corrigir-redacao`,
+              {
+                method:
+                  "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                  Authorization:
+                    `Bearer ${token}`
+                },
+                body:
+                  JSON.stringify(
+                    {
+                      tema,
+                      texto
+                    }
+                  )
+              }
+            );
+
+          const data =
+            await res.json();
+
+          if (!res.ok) {
+            alert(
+              data.error
+            );
+            return;
+          }
+
+          document.getElementById(
+            "feedback-redacao"
+          ).innerHTML = `
+            <div class="card">
+              <h3>Nota Final: ${data.nota_total}</h3>
+              <p>${data.feedback}</p>
+            </div>
+          `;
+
+        } catch (err) {
+          console.error(
+            err
+          );
+
+          alert(
+            "Erro ao corrigir redação"
+          );
+        }
+      };
+  }
 });
 
-function renderProva(lista) {
+// ======================
+// RENDERIZAR PROVA
+// ======================
+function renderProva(
+  lista,
+  containerId,
+  finalizarId
+) {
   questoes = lista;
 
   const container =
     document.getElementById(
-      "prova-container"
+      containerId
     );
 
-  container.innerHTML = lista
-    .map(
-      (q, i) => `
+  container.innerHTML =
+    lista
+      .map(
+        (q, i) => `
       <div class="questao">
         <h3>Q${i + 1}</h3>
 
         <p>${q.enunciado}</p>
 
-        ${Object.entries(q.opcoes)
+        ${Object.entries(
+          q.opcoes
+        )
           .map(
             ([letra, texto]) => `
             <label class="alternativa">
@@ -181,10 +323,82 @@ function renderProva(lista) {
           .join("")}
       </div>
     `
-    )
-    .join("");
+      )
+      .join("");
 
   document
-    .getElementById("finalizar-btn")
-    .classList.remove("hidden");
+    .getElementById(
+      finalizarId
+    )
+    .classList.remove(
+      "hidden"
+    );
+}
+
+// ======================
+// SALVAR RESULTADO
+// ======================
+async function salvarResultado() {
+  try {
+    const respostas =
+      questoes.map(
+        (q, i) => {
+          const marcada =
+            document.querySelector(
+              `input[name="q${i}"]:checked`
+            );
+
+          return {
+            correta:
+              q.correta,
+            selecionada:
+              marcada
+                ? marcada.value
+                : null
+          };
+        }
+      );
+
+    const res =
+      await fetch(
+        `${API}/salvar-prova`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`
+          },
+          body:
+            JSON.stringify({
+              questoes:
+                respostas
+            })
+        }
+      );
+
+    const data =
+      await res.json();
+
+    if (!res.ok) {
+      alert(
+        data.error
+      );
+      return;
+    }
+
+    alert(
+      `Acertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(
+        1
+      )}%`
+    );
+
+  } catch (err) {
+    console.error(err);
+
+    alert(
+      "Erro ao salvar prova"
+    );
+  }
 }
