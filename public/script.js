@@ -90,7 +90,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     } catch (err) {
       console.error(err);
-      alert("Erro gerar prova");
+      alert("Erro ao gerar prova");
     }
   };
 
@@ -99,26 +99,31 @@ window.addEventListener("DOMContentLoaded", () => {
   // ======================
   finalizarBtn.onclick = async () => {
     try {
-      const respostas = questoes.map((q, i) => {
-        const marcada = document.querySelector(
-          `input[name="q${i}"]:checked`
-        );
+      const respostas =
+        questoes.map((q, i) => {
+          const marcada =
+            document.querySelector(
+              `input[name="q${i}"]:checked`
+            );
 
-        return {
-          correta: q.correta,
-          selecionada: marcada
-            ? marcada.value
-            : null
-        };
-      });
+          return {
+            correta: q.correta,
+            selecionada:
+              marcada
+                ? marcada.value
+                : null
+          };
+        });
 
       const res = await fetch(
         `${API}/salvar-prova`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`
           },
           body: JSON.stringify({
             questoes: respostas
@@ -157,6 +162,7 @@ function renderProva(lista) {
       (q, i) => `
       <div class="questao">
         <h3>Q${i + 1}</h3>
+
         <p>${q.enunciado}</p>
 
         ${Object.entries(q.opcoes)
