@@ -173,34 +173,35 @@ async function chamarIA(prompt) {
     console.log("Enviando para IA...");
 
     const response = await axios.post(
-      "https://api-inference.huggingface.co/models/microsoft/Phi-3-mini-4k-instruct",
+      "https://openrouter.ai/api/v1/chat/completions",
       {
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 2000,
-          temperature: 0.7,
-          return_full_text: false
-        }
+        model: "mistralai/mistral-7b-instruct",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é especialista em ENEM. Responda somente JSON válido."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json"
+          Authorization:
+            `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type":
+            "application/json"
         },
-        timeout: 120000
+        timeout: 60000
       }
     );
 
-    console.log(response.data);
-
-    const texto =
-      response.data?.[0]?.generated_text;
-
-    if (!texto) {
-      throw new Error("IA retornou vazio");
-    }
-
-    return texto;
+    return response.data
+      .choices?.[0]
+      ?.message?.content;
 
   } catch (err) {
     console.error(
@@ -211,22 +212,6 @@ async function chamarIA(prompt) {
     throw new Error("Erro IA");
   }
 }
-
-function extrairJSONSeguro(texto) {
-    try {
-        const match = texto.match(
-            /\{[\s\S]*\}|\[[\s\S]*\]/
-        );
-
-        if (!match) return null;
-
-        return JSON.parse(match[0]);
-
-    } catch {
-        return null;
-    }
-}
-
 
 
 
