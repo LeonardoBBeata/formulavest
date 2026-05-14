@@ -150,41 +150,55 @@ function auth(req, res, next) {
 // ======================
 
 async function chamarIA(prompt) {
+  try {
+    console.log("Enviando para IA...");
 
-    try {
+    const response = await axios.post(
+      "https://router.huggingface.co/v1/chat/completions",
+      {
+        model: "deepseek-ai/DeepSeek-V3.2:fastest",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é especialista em ENEM. Responda SOMENTE JSON válido."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 120000
+      }
+    );
 
-        const response = await axios.post(
-            'https://router.huggingface.co/v1/chat/completions',
-            {
-                model: 'deepseek-ai/DeepSeek-V3.2:fastest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'Você é especialista em ENEM.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ]
-            },
-            {
-                headers: {
-                    Authorization:
-                        `Bearer ${process.env.HUGGINGFACE_API_KEY}`
-                },
-                timeout: 60000
-            }
-        );
+    const texto =
+      response.data?.choices?.[0]?.message?.content;
 
-        return response.data
-            .choices?.[0]
-            ?.message?.content;
+    console.log("RESPOSTA IA:");
+    console.log(texto);
 
-    } catch (err) {
-        console.log(err.message);
-        throw new Error('Erro IA');
+    if (!texto) {
+      throw new Error("IA retornou vazio");
     }
+
+    return texto;
+
+  } catch (err) {
+    console.error(
+      "ERRO IA:",
+      err.response?.data || err.message
+    );
+
+    throw new Error("Erro IA");
+  }
 }
 
 function extrairJSONSeguro(texto) {
@@ -465,36 +479,73 @@ app.post('/login', async (req, res) => {
 // ======================
 // GERAR PROVA
 // ======================
-app.post('/gerar-prova', auth, async (req, res) => {
+app.post("/gerar-prova", auth, async (req, res) => {
   try {
     const { curso, faculdade, quantidade } = req.body;
+
     const qtd = Number(quantidade) || 10;
+
+    console.log("GERANDO PROVA...");
+    console.log(req.body);
 
     const prompt = `
 Crie ${qtd} questões estilo ENEM para:
+
 Curso: ${curso}
 Faculdade: ${faculdade}
 
-RETORNE SOMENTE JSON:
+RETORNE SOMENTE JSON VÁLIDO:
+
 {
-  "questoes": [{
-    "enunciado":"",
-    "opcoes":{"A":"","B":"","C":"","D":"","E":""},
-    "correta":"A"
-  }]
-}`;
+  "questoes": [
+    {
+      "enunciado": "Pergunta aqui",
+      "opcoes": {
+        "A": "Texto",
+        "B": "Texto",
+        "C": "Texto",
+        "D": "Texto",
+        "E": "Texto"
+      },
+      "correta": "A"
+    }
+  ]
+}
+`;
 
     const resposta = await chamarIA(prompt);
-    const json = extrairJSONSeguro(resposta);
 
-    if (!json?.questoes) {
-      return res.status(500).json({ error: 'IA inválida' });
+    const json =
+      extrairJSONSeguro(resposta);
+
+    console.log("JSON EXTRAÍDO:");
+    console.log(json);
+
+    if (
+      !json ||
+      !json.questoes ||
+      !Array.isArray(json.questoes)
+    ) {
+      return res.status(500).json({
+        error:
+          "IA retornou formato inválido"
+      });
     }
 
-    res.json({ questoes: json.questoes });
+    return res.json({
+      questoes: json.questoes
+    });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro gerar prova' });
+    console.error(
+      "ERRO GERAR PROVA:",
+      err
+    );
+
+    return res.status(500).json({
+      error:
+        "Erro ao gerar prova"
+    });
   }
 });
 
