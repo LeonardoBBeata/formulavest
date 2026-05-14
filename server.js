@@ -104,11 +104,6 @@ ADD COLUMN IF NOT EXISTS reset_token TEXT
 
 await db.query(`
 ALTER TABLE usuarios
-ADD COLUMN IF NOT EXISTS reset_token TEXT
-`);
-
-await db.query(`
-ALTER TABLE usuarios
 ADD COLUMN IF NOT EXISTS reset_expira TIMESTAMP
 `);
 
@@ -175,7 +170,7 @@ async function chamarIA(prompt) {
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "meta-llama/llama-3.1-8b-instruct",
+        model: "openai/gpt-oss-20b:free",
         messages: [
           {
             role: "system",
@@ -222,7 +217,24 @@ async function chamarIA(prompt) {
   }
 }
 
+function extrairJSONSeguro(texto) {
+  try {
+    const match = texto.match(
+      /\{[\s\S]*\}|\[[\s\S]*\]/
+    );
 
+    if (!match) return null;
+
+    return JSON.parse(match[0]);
+
+  } catch (err) {
+    console.error(
+      "Erro ao extrair JSON:",
+      err
+    );
+    return null;
+  }
+}
 
 // ======================
 // HEALTH
