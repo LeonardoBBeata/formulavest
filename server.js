@@ -170,38 +170,47 @@ function auth(req, res, next) {
 
 async function chamarIA(prompt) {
   try {
-    console.log("Enviando para IA...");
+    console.log("Enviando para OpenRouter...");
 
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "mistralai/mistral-7b-instruct",
+        model: "meta-llama/llama-3.1-8b-instruct",
         messages: [
           {
             role: "system",
             content:
-              "Você é especialista em ENEM. Responda somente JSON válido."
+              "Você é especialista em vestibulares brasileiros e deve responder SOMENTE em JSON válido."
           },
           {
             role: "user",
             content: prompt
           }
-        ]
+        ],
+        temperature: 0.7,
+        max_tokens: 4000
       },
       {
         headers: {
-          Authorization:
-            `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type":
-            "application/json"
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://formulavest.onrender.com",
+          "X-Title": "FormulaVest"
         },
-        timeout: 60000
+        timeout: 120000
       }
     );
 
-    return response.data
-      .choices?.[0]
-      ?.message?.content;
+    const texto =
+      response.data?.choices?.[0]?.message?.content;
+
+    if (!texto) {
+      throw new Error("IA retornou vazio");
+    }
+
+    console.log("Resposta recebida da IA.");
+
+    return texto;
 
   } catch (err) {
     console.error(
@@ -212,7 +221,6 @@ async function chamarIA(prompt) {
     throw new Error("Erro IA");
   }
 }
-
 
 
 
