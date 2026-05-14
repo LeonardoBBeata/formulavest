@@ -97,6 +97,10 @@ async function initDB() {
 ALTER TABLE usuarios
 ADD COLUMN IF NOT EXISTS login_codigo TEXT
 `);
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS reset_token TEXT
+`);
 
 await db.query(`
 ALTER TABLE usuarios
@@ -414,317 +418,164 @@ app.post('/verificar-email', async (req, res) => {
 });
 
 
-// ======================
-// LOGIN
-// ======================
+app.post('/login-iniciar', async (req,res)=>{
+  try{
+    const { email, senha } = req.body;
 
-app.post('/login', async (req, res) => {
-  try {
-    const email =
-      req.body.email
-        ?.toLowerCase()
-        .trim();
+    const result = await db.query(
+      `SELECT * FROM usuarios
+       WHERE email=$1`,
+      [email]
+    );
 
-    const senha =
-      req.body.senha;
+    const user = result.rows[0];
 
-    const result =
-      await db.query(
-        `
-        SELECT *
-        FROM usuarios
-        WHERE email=$1
-        `,
-        [email]
-      );
-
-    const user =
-      result.rows[0];
-
-    if (!user) {
-      return res.status(401).json({
-        error: 'Email não encontrado'
+    if(!user){
+      return res.status(404).json({
+        error:'Email não encontrado'
       });
     }
 
-    const senhaOk =
+    const ok =
       await bcrypt.compare(
         senha,
         user.senha
       );
 
-    if (!senhaOk) {
+    if(!ok){
       return res.status(401).json({
-        error: 'Senha incorreta'
+        error:'Senha incorreta'
       });
     }
 
     const codigo =
       Math.floor(
-        100000 +
-        Math.random() * 900000
+        100000+
+        Math.random()*900000
       ).toString();
 
-    await db.query(
-      `
+    await db.query(`
       UPDATE usuarios
-      SET login_codigo=$1
+      SET codigo_verificacao=$1
       WHERE id=$2
-      `,
-      [
-        codigo,
-        user.id
-      ]
-    );
+    `,[codigo,user.id]);
 
     await resend.emails.send({
-      from:
-        process.env.EMAIL_FROM,
-      to: user.email,
-      subject:
-        'Código de login',
-      text:
-        `Seu código é: ${codigo}`
+      from:process.env.EMAIL_FROM,
+      to:email,
+      subject:"Código login",
+      text:`Seu código: ${codigo}`
     });
 
-    res.json({
-      ok: true,
-      precisaCodigo: true
-    });
+    res.json({ ok:true });
 
-  } catch (err) {
-    console.error(err);
-
+  }catch(err){
+    console.log(err);
     res.status(500).json({
-      error:
-        'Erro login'
+      error:'Erro login'
     });
   }
 });
 
-// ======================
-// CONFIRMAR LOGIN
-// ======================
-app.post(
-  '/confirmar-login',
-  async (req, res) => {
-    try {
-      const {
-        email,
-        codigo
-      } = req.body;
+app.post('/login-confirmar', async (req,res)=>{
+  try{
+    const {
+      email,
+      senha,
+      codigo
+    } = req.body;
 
-      const result =
-        await db.query(
-          `
-          SELECT *
-          FROM usuarios
-          WHERE email=$1
-          `,
-          [email]
-        );
+    const result =
+      await db.query(`
+      SELECT * FROM usuarios
+      WHERE email=$1
+    `,[email]);
 
-      const user =
-        result.rows[0];
+    const user =
+      result.rows[0];
 
-      if (
-        !user ||
-        user.login_codigo !==
-          codigo
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              'Código inválido'
-          });
-      }
-
-      await db.query(
-        `
-        UPDATE usuarios
-        SET login_codigo=NULL
-        WHERE id=$1
-        `,
-        [user.id]
-      );
-
-      const token =
-        gerarToken(user);
-
-      res.json({
-        ok: true,
-        token
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      res.status(500).json({
-        error:
-          'Erro confirmação'
+    if(
+      user.codigo_verificacao
+      !== codigo
+    ){
+      return res.status(400).json({
+        error:'Código inválido'
       });
     }
-  }
-);
 
-// ======================
-// ESQUECI MINHA SENHA
-// ======================
-const crypto =
-  require('crypto');
-
-app.post(
-  '/esqueci-senha',
-  async (req, res) => {
-    try {
-      const email =
-        req.body.email
-          ?.toLowerCase()
-          .trim();
-
-      const result =
-        await db.query(
-          `
-          SELECT *
-          FROM usuarios
-          WHERE email=$1
-          `,
-          [email]
-        );
-
-      const user =
-        result.rows[0];
-
-      if (!user) {
-        return res.json({
-          ok: true
-        });
-      }
-
-      const token =
-        crypto
-          .randomBytes(32)
-          .toString('hex');
-
-      await db.query(
-        `
-        UPDATE usuarios
-        SET
-          reset_token=$1,
-          reset_expira=
-            NOW() +
-            INTERVAL '1 hour'
-        WHERE id=$2
-        `,
-        [
-          token,
-          user.id
-        ]
+    const ok =
+      await bcrypt.compare(
+        senha,
+        user.senha
       );
 
-      const link =
+    if(!ok){
+      return res.status(401).json({
+        error:'Senha incorreta'
+      });
+    }
+
+    const token =
+      gerarToken(user);
+
+    res.json({
+      ok:true,
+      token
+    });
+
+  }catch(err){
+    console.log(err);
+    res.status(500).json({
+      error:'Erro'
+    });
+  }
+});
+
+app.post(
+'/forgot-password',
+async (req,res)=>{
+  try{
+    const { email } =
+      req.body;
+
+    const token =
+      jwt.sign(
+        { email },
+        process.env.JWT_SECRET,
+        {
+          expiresIn:'1h'
+        }
+      );
+
+    const link =
 `https://formulavest.onrender.com/reset-password.html?token=${token}`;
 
-      await resend.emails.send({
-        from:
-          process.env.EMAIL_FROM,
-        to: user.email,
-        subject:
-          'Recuperar senha',
-        html:
-          `<a href="${link}">
-            Clique aqui para redefinir sua senha
-          </a>`
-      });
+    await resend.emails.send({
+      from:
+        process.env.EMAIL_FROM,
+      to:email,
+      subject:
+        'Recuperar senha',
+      html:
+`Clique aqui:
+<a href="${link}">
+Alterar senha
+</a>`
+    });
 
-      res.json({
-        ok: true
-      });
+    res.json({
+      message:
+        'Link enviado'
+    });
 
-    } catch (err) {
-      console.error(err);
+  }catch(err){
+    console.log(err);
 
-      res.status(500).json({
-        error:
-          'Erro recuperação'
-      });
-    }
+    res.status(500).json({
+      error:'Erro'
+    });
   }
-);
-
-// ======================
-// REDEFINIR SENHA
-// ======================
-app.post(
-  '/reset-password',
-  async (req, res) => {
-    try {
-      const {
-        token,
-        novaSenha
-      } = req.body;
-
-      const result =
-        await db.query(
-          `
-          SELECT *
-          FROM usuarios
-          WHERE
-            reset_token=$1
-            AND
-            reset_expira > NOW()
-          `,
-          [token]
-        );
-
-      const user =
-        result.rows[0];
-
-      if (!user) {
-        return res
-          .status(400)
-          .json({
-            error:
-              'Link inválido'
-          });
-      }
-
-      const hash =
-        await bcrypt.hash(
-          novaSenha,
-          10
-        );
-
-      await db.query(
-        `
-        UPDATE usuarios
-        SET
-          senha=$1,
-          reset_token=NULL,
-          reset_expira=NULL
-        WHERE id=$2
-        `,
-        [
-          hash,
-          user.id
-        ]
-      );
-
-      res.json({
-        ok: true
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      res.status(500).json({
-        error:
-          'Erro reset'
-      });
-    }
-  }
-);
+});
 
 
 // ======================
