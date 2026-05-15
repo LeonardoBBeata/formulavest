@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const { Resend } = require('resend');
 const NodeCache = require('node-cache');
+const cookieParser = require('cookie-parser');
 const PDFDocument = require('pdfkit');
 const validator = require('validator');
 const { Pool } = require('pg');
@@ -39,7 +40,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // MIDDLEWARES
 // ======================
 
-
+app.use(cookieParser());
 app.use(cors({
   origin: "*"
 }));
@@ -70,6 +71,11 @@ async function initDB() {
     ALTER TABLE usuarios
     ADD COLUMN IF NOT EXISTS email TEXT UNIQUE
   `);
+await db.query(`
+  ALTER TABLE usuarios
+  ADD COLUMN IF NOT EXISTS banido BOOLEAN DEFAULT FALSE
+`);
+    
     await db.query(`
   CREATE TABLE IF NOT EXISTS provas_ativas(
     id SERIAL PRIMARY KEY,
@@ -361,6 +367,30 @@ console.log('Email enviado:', data);
         });
     }
 });
+
+// ======================
+// MIDDLEWARE ADM
+// ======================
+
+function adminAuth(req, res, next) {
+  const adminCookie =
+    req.cookies.admin;
+
+  if (
+    adminCookie === "true"
+  ) {
+    return next();
+  }
+
+  return res
+    .status(401)
+    .json({
+      error:
+        "Não autorizado"
+    });
+}
+
+
 // ======================
 // VERIFY EMAIL
 // ======================
@@ -491,8 +521,8 @@ app.post('/login-iniciar', async (req,res)=>{
   }
 });
 
-app.post('/login-confirmar', async (req,res)=>{
-  try{
+app.post('/login-confirmar', async (req, res) => {
+  try {
     const {
       email,
       senha,
@@ -501,19 +531,35 @@ app.post('/login-confirmar', async (req,res)=>{
 
     const result =
       await db.query(`
-      SELECT * FROM usuarios
-      WHERE email=$1
-    `,[email]);
+        SELECT *
+        FROM usuarios
+        WHERE email=$1
+      `, [email]);
 
     const user =
       result.rows[0];
 
-    if(
+    if (!user) {
+      return res.status(404).json({
+        error:
+          "Usuário não encontrado"
+      });
+    }
+
+    if (user.banido) {
+      return res.status(403).json({
+        error:
+          "Usuário banido"
+      });
+    }
+
+    if (
       user.codigo_verificacao
       !== codigo
-    ){
+    ) {
       return res.status(400).json({
-        error:'Código inválido'
+        error:
+          "Código inválido"
       });
     }
 
@@ -523,24 +569,43 @@ app.post('/login-confirmar', async (req,res)=>{
         user.senha
       );
 
-    if(!ok){
+    if (!ok) {
       return res.status(401).json({
-        error:'Senha incorreta'
+        error:
+          "Senha incorreta"
       });
     }
 
     const token =
       gerarToken(user);
 
+    const isAdmin =
+      email ===
+      process.env.ADMIN_EMAIL;
+
+    if (isAdmin) {
+      res.cookie(
+        "admin",
+        "true",
+        {
+          httpOnly: true,
+          sameSite: "lax"
+        }
+      );
+    }
+
     res.json({
-      ok:true,
-      token
+      ok: true,
+      token,
+      admin: isAdmin
     });
 
-  }catch(err){
-    console.log(err);
+  } catch (err) {
+    console.error(err);
+
     res.status(500).json({
-      error:'Erro'
+      error:
+        "Erro login"
     });
   }
 });
@@ -648,6 +713,341 @@ app.post(
       res.status(400).json({
         error:
           "Token inválido ou expirado"
+      });
+    }
+  }
+);
+
+
+// ======================
+// ADMIN LOGIN DIRETO
+// ======================
+app.post(
+  '/admin-login',
+  (req, res) => {
+    const {
+      email,
+      senha
+    } = req.body;
+
+    if (
+      email ===
+        process.env.ADMIN_EMAIL &&
+      senha ===
+        process.env.ADMIN_PASSWORD
+    ) {
+      res.cookie(
+        'admin',
+        'true',
+        {
+          httpOnly: true,
+          sameSite: 'lax'
+        }
+      );
+
+      return res.json({
+        ok: true
+      });
+    }
+
+    res.status(401).json({
+      error:
+        'Credenciais inválidas'
+    });
+  }
+);
+
+// ======================
+// ADMIN CHECK
+// ======================
+app.get(
+  '/admin-check',
+  adminAuth,
+  (_, res) => {
+    res.json({
+      ok: true
+    });
+  }
+);
+
+// ======================
+// ADMIN LOGOUT
+// ======================
+app.post(
+  '/logout',
+  (req, res) => {
+    res.clearCookie(
+      'admin'
+    );
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+// ======================
+// ADMIN PROVAS
+// ======================
+app.get(
+  '/admin/provas',
+  adminAuth,
+  async (_, res) => {
+    try {
+      const result =
+        await db.query(`
+          SELECT
+            p.*,
+            u.username
+          FROM provas p
+          JOIN usuarios u
+          ON u.id =
+          p.usuario_id
+          ORDER BY
+          p.id DESC
+        `);
+
+      res.json({
+        provas:
+          result.rows
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro provas'
+      });
+    }
+  }
+);
+
+// ======================
+// ADMIN USUÁRIOS
+// ======================
+app.get(
+  '/admin/usuarios',
+  adminAuth,
+  async (_, res) => {
+    try {
+      const result =
+        await db.query(`
+          SELECT
+            id,
+            username,
+            banido
+          FROM usuarios
+          ORDER BY id DESC
+        `);
+
+      res.json({
+        usuarios:
+          result.rows
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro usuários'
+      });
+    }
+  }
+);
+
+// ======================
+// ADMIN CRIAR USUÁRIO
+// ======================
+app.post(
+  '/admin/criar-usuario',
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        username,
+        senha
+      } = req.body;
+
+      if (
+        !username ||
+        !senha
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              'Campos obrigatórios'
+          });
+      }
+
+      const hash =
+        await bcrypt.hash(
+          senha,
+          10
+        );
+
+      await db.query(`
+        INSERT INTO usuarios(
+          username,
+          senha
+        )
+        VALUES($1,$2)
+      `, [
+        username,
+        hash
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro criar usuário'
+      });
+    }
+  }
+);
+
+// ======================
+// BANIR/DESBANIR
+// ======================
+app.put(
+  '/admin/usuario/:id/banir',
+  adminAuth,
+  async (req, res) => {
+    try {
+      const id =
+        req.params.id;
+
+      await db.query(`
+        UPDATE usuarios
+        SET banido =
+        NOT banido
+        WHERE id=$1
+      `, [id]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro banir'
+      });
+    }
+  }
+);
+
+// ======================
+// EXCLUIR USUÁRIO
+// ======================
+app.delete(
+  '/admin/usuario/:id',
+  adminAuth,
+  async (req, res) => {
+    try {
+      const id =
+        req.params.id;
+
+      await db.query(`
+        DELETE FROM usuarios
+        WHERE id=$1
+      `, [id]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro excluir'
+      });
+    }
+  }
+);
+
+// ======================
+// ADMIN STATS
+// ======================
+app.get(
+  '/admin/stats',
+  adminAuth,
+  async (_, res) => {
+    try {
+      const result =
+        await db.query(`
+          SELECT
+            u.username,
+            p.acertos
+          FROM provas p
+          JOIN usuarios u
+          ON u.id =
+          p.usuario_id
+        `);
+
+      const provas =
+        result.rows;
+
+      const totalProvas =
+        provas.length;
+
+      let soma = 0;
+      const ranking = {};
+
+      provas.forEach(
+        p => {
+          soma +=
+            p.acertos;
+
+          ranking[
+            p.username
+          ] =
+            (ranking[
+              p.username
+            ] || 0) +
+            p.acertos;
+        }
+      );
+
+      const media =
+        totalProvas
+          ? (
+              soma /
+              totalProvas
+            ).toFixed(1)
+          : 0;
+
+      res.json({
+        totalProvas,
+        media,
+        labels:
+          Object.keys(
+            ranking
+          ),
+        values:
+          Object.values(
+            ranking
+          )
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          'Erro stats'
       });
     }
   }
