@@ -5,7 +5,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const NodeCache = require('node-cache');
 const cookieParser = require('cookie-parser');
 const PDFDocument = require('pdfkit');
@@ -31,10 +31,35 @@ const db = new Pool({
 });
 
 // ======================
-// EMAIL
+// EMAIL (GMAIL SMTP)
 // ======================
-const resend = new Resend(process.env.RESEND_API_KEY);
 
+const transporter =
+  nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user:
+        process.env.GMAIL_USER,
+      pass:
+        process.env.GMAIL_APP_PASSWORD
+    }
+  });
+
+async function enviarEmail(
+  para,
+  assunto,
+  texto,
+  html = null
+){
+  await transporter.sendMail({
+    from:
+      `"FórmulaVest" <${process.env.GMAIL_USER}>`,
+    to: para,
+    subject: assunto,
+    text: texto,
+    html
+  });
+}
 
 // ======================
 // MIDDLEWARES
@@ -336,12 +361,11 @@ app.post('/register', async (req, res) => {
         console.log('Tentando enviar email para:', email);
 
         // enviar email
-const { data, error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: 'Código de verificação - FórmulaVest',
-    text: `Seu código de verificação é: ${codigo}`
-});
+await enviarEmail(
+  email,
+  "Código de verificação - FórmulaVest",
+  `Seu código de verificação é: ${codigo}`
+);
 
 if (error) {
     console.error('ERRO RESEND:', error);
@@ -504,12 +528,11 @@ app.post('/login-iniciar', async (req,res)=>{
       WHERE id=$2
     `,[codigo,user.id]);
 
-    await resend.emails.send({
-      from:process.env.EMAIL_FROM,
-      to:email,
-      subject:"Código login",
-      text:`Seu código: ${codigo}`
-    });
+    await enviarEmail(
+  email,
+  "Código de login - FórmulaVest",
+  `Seu código é: ${codigo}`
+);
 
     res.json({ ok:true });
 
@@ -629,18 +652,18 @@ async (req,res)=>{
     const link =
 `https://formulavest.onrender.com/reset-password.html?token=${token}`;
 
-    await resend.emails.send({
-      from:
-        process.env.EMAIL_FROM,
-      to:email,
-      subject:
-        'Recuperar senha',
-      html:
-`Clique aqui:
-<a href="${link}">
-Alterar senha
-</a>`
-    });
+    await enviarEmail(
+  email,
+  "Recuperar senha - FórmulaVest",
+  `Acesse: ${link}`,
+  `
+    <h2>Recuperar senha</h2>
+    <p>Clique abaixo:</p>
+    <a href="${link}">
+      Alterar senha
+    </a>
+  `
+);
 
     res.json({
       message:
@@ -1443,28 +1466,30 @@ app.get('/provas', auth, async (req, res) => {
 //=======================
 //teste email
 //=======================
-app.get('/teste-email', async (_, res) => {
+app.get(
+  '/teste-email',
+  async (_, res) => {
     try {
-        const { data, error } = await resend.emails.send({
-            from: process.env.EMAIL_FROM,
-            to: "leonardo.beata@aluno.cps.sp.gov.br", // ou seu email fixo
-            subject: 'Teste Resend',
-            text: 'Se chegou, está funcionando.'
-        });
 
-        if (error) {
-            console.error('ERRO RESEND:', error);
-            return res.status(500).send('Erro ao enviar');
-        }
+      await enviarEmail(
+        "leonardo.beata@aluno.cps.sp.gov.br",
+        "Teste FórmulaVest",
+        "Se chegou, está funcionando."
+      );
 
-        console.log('EMAIL OK:', data);
-        res.send('Email enviado com Resend 🚀');
+      res.send(
+        "Email enviado 🚀"
+      );
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Erro geral');
+      console.error(err);
+
+      res.status(500).send(
+        "Erro ao enviar"
+      );
     }
-});
+  }
+);
 // ======================
 // RANKING
 // ======================
