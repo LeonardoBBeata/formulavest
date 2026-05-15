@@ -651,7 +651,7 @@ app.post(
 app.post('/gerar-provao', auth, async (req, res) => {
   try {
     const resposta = await chamarIA(`
-Crie uma prova completa baseada no estilo do Provão Paulista.
+Crie uma prova com 10 questões baseada no estilo do Provão Paulista.
 
 Use provas anteriores como referência.
 
@@ -781,7 +781,7 @@ app.post('/gerar-enem', auth, async (req, res) => {
     let questoes = [];
     let tentativas = 0;
 
-    while (questoes.length < 90 && tentativas < 20) {
+    while (questoes.length < 10 && tentativas < 20) {
       tentativas++;
       try {
         const resposta = await chamarIA(`
@@ -808,7 +808,7 @@ RETORNE SOMENTE JSON:
       return res.status(500).json({ error: 'Falha ao gerar questões' });
     }
 
-    res.json({ questoes: questoes.slice(0, 90) });
+    res.json({ questoes: questoes.slice(0, 10) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ENEM' });
