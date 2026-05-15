@@ -109,7 +109,8 @@ document
     }
   );
 
-  const data = await res.json();
+  const data =
+    await res.json();
 
   if(!res.ok){
     alert(data.error);
@@ -121,7 +122,16 @@ document
     data.token
   );
 
-  location.href = "/";
+  // SE FOR ADMIN → vai pro admin
+  if(data.admin){
+    location.href =
+      "/admin.html";
+    return;
+  }
+
+  // usuário normal
+  location.href =
+    "/index.html";
 };
 
 
