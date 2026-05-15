@@ -1,49 +1,33 @@
-const API = "https://formulavest.onrender.com";
+const API =
+  "https://formulavest.onrender.com";
 
-console.log("APP JS CARREGADO");
-
-const token = localStorage.getItem("token");
+const token =
+  localStorage.getItem("token");
 
 if (!token) {
-  window.location.href = "/login.html";
+  window.location.href =
+    "/login.html";
 }
 
 let questoes = [];
 
-window.addEventListener("DOMContentLoaded", () => {
-  // ======================
-  // ELEMENTOS
-  // ======================
-  const logoutBtn = document.getElementById("logout-btn");
+window.addEventListener(
+  "DOMContentLoaded",
+  () => {
+    iniciarApp();
+  }
+);
 
-  const gerarEnemBtn =
-    document.getElementById(
-      "gerar-enem-btn"
-    );
+function iniciarApp() {
+  configurarAbas();
+  configurarLogout();
+  configurarBotoes();
 
-  const gerarProvaoBtn =
-    document.getElementById(
-      "gerar-provao-btn"
-    );
+  carregarRanking();
+  carregarDashboard();
+}
 
-  const finalizarEnemBtn =
-    document.getElementById(
-      "finalizar-enem-btn"
-    );
-
-  const finalizarProvaoBtn =
-    document.getElementById(
-      "finalizar-provao-btn"
-    );
-
-  const enviarRedacaoBtn =
-    document.getElementById(
-      "enviar-redacao"
-    );
-
-  // ======================
-  // TROCAR ABAS
-  // ======================
+function configurarAbas() {
   const menuItems =
     document.querySelectorAll(
       ".sidebar li"
@@ -87,203 +71,116 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     );
   });
+}
 
-  // ======================
-  // LOGOUT
-  // ======================
-  if (logoutBtn) {
-    logoutBtn.onclick = () => {
-      localStorage.clear();
+function configurarLogout() {
+  const btn =
+    document.getElementById(
+      "logout-btn"
+    );
 
-      window.location.href =
-        "/login.html";
-    };
-  }
+  btn.onclick = () => {
+    localStorage.clear();
 
-  // ======================
-  // GERAR ENEM
-  // ======================
-  if (gerarEnemBtn) {
-    gerarEnemBtn.onclick =
-      async () => {
-        try {
-          const res =
-            await fetch(
-              `${API}/gerar-enem`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization:
-                    `Bearer ${token}`
-                }
-              }
-            );
+    window.location.href =
+      "/login.html";
+  };
+}
 
-          const data =
-            await res.json();
+function configurarBotoes() {
+  document.getElementById(
+    "gerar-enem-btn"
+  ).onclick = gerarEnem;
 
-          if (!res.ok) {
-            alert(
-              data.error
-            );
-            return;
+  document.getElementById(
+    "gerar-provao-btn"
+  ).onclick = gerarProvao;
+
+  document.getElementById(
+    "finalizar-enem-btn"
+  ).onclick = salvarResultado;
+
+  document.getElementById(
+    "finalizar-provao-btn"
+  ).onclick = salvarResultado;
+
+  document.getElementById(
+    "enviar-redacao"
+  ).onclick = corrigirRedacao;
+}
+
+async function gerarEnem() {
+  try {
+    const res =
+      await fetch(
+        `${API}/gerar-enem`,
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              `Bearer ${token}`
           }
-
-          renderProva(
-            data.questoes,
-            "enem-container",
-            "finalizar-enem-btn"
-          );
-
-        } catch (err) {
-          console.error(
-            err
-          );
-
-          alert(
-            "Erro ao gerar ENEM"
-          );
         }
-      };
+      );
+
+    const data =
+      await res.json();
+
+    if (!res.ok) {
+      return alert(
+        data.error
+      );
+    }
+
+    renderProva(
+      data.questoes,
+      "enem-container",
+      "finalizar-enem-btn"
+    );
+
+  } catch {
+    alert(
+      "Erro ao gerar ENEM"
+    );
   }
+}
 
-  // ======================
-  // GERAR PROVÃO
-  // ======================
-  if (gerarProvaoBtn) {
-    gerarProvaoBtn.onclick =
-      async () => {
-        try {
-          const res =
-            await fetch(
-              `${API}/gerar-provao`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization:
-                    `Bearer ${token}`
-                }
-              }
-            );
-
-          const data =
-            await res.json();
-
-          if (!res.ok) {
-            alert(
-              data.error
-            );
-            return;
+async function gerarProvao() {
+  try {
+    const res =
+      await fetch(
+        `${API}/gerar-provao`,
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              `Bearer ${token}`
           }
-
-          renderProva(
-            data.questoes,
-            "provao-container",
-            "finalizar-provao-btn"
-          );
-
-        } catch (err) {
-          console.error(
-            err
-          );
-
-          alert(
-            "Erro ao gerar Provão"
-          );
         }
-      };
+      );
+
+    const data =
+      await res.json();
+
+    if (!res.ok) {
+      return alert(
+        data.error
+      );
+    }
+
+    renderProva(
+      data.questoes,
+      "provao-container",
+      "finalizar-provao-btn"
+    );
+
+  } catch {
+    alert(
+      "Erro ao gerar Provão"
+    );
   }
+}
 
-  // ======================
-  // FINALIZAR ENEM
-  // ======================
-  if (finalizarEnemBtn) {
-    finalizarEnemBtn.onclick =
-      salvarResultado;
-  }
-
-  // ======================
-  // FINALIZAR PROVÃO
-  // ======================
-  if (finalizarProvaoBtn) {
-    finalizarProvaoBtn.onclick =
-      salvarResultado;
-  }
-
-  // ======================
-  // CORRIGIR REDAÇÃO
-  // ======================
-  if (enviarRedacaoBtn) {
-    enviarRedacaoBtn.onclick =
-      async () => {
-        try {
-          const tema =
-            document.getElementById(
-              "tema-redacao"
-            ).value;
-
-          const texto =
-            document.getElementById(
-              "texto-redacao"
-            ).value;
-
-          const res =
-            await fetch(
-              `${API}/corrigir-redacao`,
-              {
-                method:
-                  "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                  Authorization:
-                    `Bearer ${token}`
-                },
-                body:
-                  JSON.stringify(
-                    {
-                      tema,
-                      texto
-                    }
-                  )
-              }
-            );
-
-          const data =
-            await res.json();
-
-          if (!res.ok) {
-            alert(
-              data.error
-            );
-            return;
-          }
-
-          document.getElementById(
-            "feedback-redacao"
-          ).innerHTML = `
-            <div class="card">
-              <h3>Nota Final: ${data.nota_total}</h3>
-              <p>${data.feedback}</p>
-            </div>
-          `;
-
-        } catch (err) {
-          console.error(
-            err
-          );
-
-          alert(
-            "Erro ao corrigir redação"
-          );
-        }
-      };
-  }
-});
-
-// ======================
-// RENDERIZAR PROVA
-// ======================
 function renderProva(
   lista,
   containerId,
@@ -302,23 +199,22 @@ function renderProva(
         (q, i) => `
       <div class="questao">
         <h3>Q${i + 1}</h3>
-
         <p>${q.enunciado}</p>
 
         ${Object.entries(
           q.opcoes
         )
           .map(
-            ([letra, texto]) => `
-            <label class="alternativa">
-              ${letra}) ${texto}
-              <input
-                type="radio"
-                name="q${i}"
-                value="${letra}"
-              >
-            </label>
-          `
+            ([l, t]) => `
+          <label class="alternativa">
+            <input
+              type="radio"
+              name="q${i}"
+              value="${l}"
+            >
+            ${l}) ${t}
+          </label>
+        `
           )
           .join("")}
       </div>
@@ -335,9 +231,6 @@ function renderProva(
     );
 }
 
-// ======================
-// SALVAR RESULTADO
-// ======================
 async function salvarResultado() {
   try {
     const respostas =
@@ -371,10 +264,12 @@ async function salvarResultado() {
               `Bearer ${token}`
           },
           body:
-            JSON.stringify({
-              questoes:
-                respostas
-            })
+            JSON.stringify(
+              {
+                questoes:
+                  respostas
+              }
+            )
         }
       );
 
@@ -382,10 +277,9 @@ async function salvarResultado() {
       await res.json();
 
     if (!res.ok) {
-      alert(
+      return alert(
         data.error
       );
-      return;
     }
 
     alert(
@@ -394,11 +288,163 @@ async function salvarResultado() {
       )}%`
     );
 
+    carregarDashboard();
+    carregarRanking();
+
+  } catch {
+    alert(
+      "Erro ao salvar"
+    );
+  }
+}
+
+async function carregarDashboard() {
+  try {
+    const res =
+      await fetch(
+        `${API}/provas`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${token}`
+          }
+        }
+      );
+
+    const data =
+      await res.json();
+
+    const div =
+      document.getElementById(
+        "dashboard-container"
+      );
+
+    if (
+      !data.provas ||
+      data.provas.length === 0
+    ) {
+      div.innerHTML =
+        "<p>Nenhuma prova feita.</p>";
+      return;
+    }
+
+    const total =
+      data.provas.length;
+
+    const media =
+      data.provas.reduce(
+        (a, p) =>
+          a +
+          p.percentual,
+        0
+      ) / total;
+
+    div.innerHTML = `
+      <div class="card">
+        <h3>Total de provas</h3>
+        <p>${total}</p>
+      </div>
+
+      <div class="card">
+        <h3>Média geral</h3>
+        <p>${media.toFixed(
+          1
+        )}%</p>
+      </div>
+    `;
+
   } catch (err) {
     console.error(err);
+  }
+}
 
+async function carregarRanking() {
+  try {
+    const res =
+      await fetch(
+        `${API}/ranking`
+      );
+
+    const data =
+      await res.json();
+
+    const div =
+      document.getElementById(
+        "ranking-container"
+      );
+
+    div.innerHTML =
+      data.ranking
+        .map(
+          (u, i) => `
+      <div class="card">
+        <h3>#${i + 1}
+        ${u.username}</h3>
+
+        <p>XP: ${u.xp}</p>
+        <p>Nível: ${u.nivel}</p>
+      </div>
+    `
+        )
+        .join("");
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function corrigirRedacao() {
+  try {
+    const tema =
+      document.getElementById(
+        "tema-redacao"
+      ).value;
+
+    const texto =
+      document.getElementById(
+        "texto-redacao"
+      ).value;
+
+    const res =
+      await fetch(
+        `${API}/corrigir-redacao`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`
+          },
+          body:
+            JSON.stringify(
+              {
+                tema,
+                texto
+              }
+            )
+        }
+      );
+
+    const data =
+      await res.json();
+
+    document.getElementById(
+      "feedback-redacao"
+    ).innerHTML = `
+      <div class="card">
+        <h3>Nota:
+        ${data.nota_total}</h3>
+
+        <p>
+        ${data.feedback}
+        </p>
+      </div>
+    `;
+
+  } catch {
     alert(
-      "Erro ao salvar prova"
+      "Erro na redação"
     );
   }
 }
