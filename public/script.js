@@ -234,23 +234,132 @@ function renderProva(
 async function salvarResultado() {
   try {
     const respostas =
-      questoes.map(
-        (q, i) => {
-          const marcada =
-            document.querySelector(
-              `input[name="q${i}"]:checked`
-            );
+      questoes.map((q, i) => {
+        const marcada =
+          document.querySelector(
+            `input[name="q${i}"]:checked`
+          );
 
-          return {
-            correta:
-              q.correta,
-            selecionada:
-              marcada
-                ? marcada.value
-                : null
-          };
-        }
+        return {
+          correta: q.correta,
+          selecionada: marcada
+            ? marcada.value
+            : null
+        };
+      });
+
+    const res = await fetch(
+      `${API}/salvar-prova`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+          Authorization:
+            `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          questoes: respostas
+        })
+      }
+    );
+
+    const data =
+      await res.json();
+
+    if (!res.ok) {
+      return alert(
+        data.error
       );
+    }
+
+    // trava todas as respostas
+    document
+      .querySelectorAll(
+        'input[type="radio"]'
+      )
+      .forEach(input => {
+        input.disabled = true;
+      });
+
+    // esconde botões finalizar
+    document
+      .getElementById(
+        "finalizar-enem-btn"
+      )
+      .classList.add(
+        "hidden"
+      );
+
+    document
+      .getElementById(
+        "finalizar-provao-btn"
+      )
+      .classList.add(
+        "hidden"
+      );
+
+    alert(
+      `Prova enviada!\n\nAcertos: ${data.acertos}\nPercentual: ${data.percentual.toFixed(
+        1
+      )}%`
+    );
+
+function mostrarDashboard() {
+  document
+    .querySelectorAll(
+      ".sidebar li"
+    )
+    .forEach(li =>
+      li.classList.remove(
+        "active"
+      )
+    );
+
+  document
+    .querySelectorAll(
+      ".section"
+    )
+    .forEach(sec =>
+      sec.classList.add(
+        "hidden"
+      )
+    );
+
+  document
+    .querySelector(
+      '[data-section="dashboard"]'
+    )
+    .classList.add(
+      "active"
+    );
+
+  document
+    .getElementById(
+      "dashboard"
+    )
+    .classList.remove(
+      "hidden"
+    );
+}
+
+    
+
+    // atualiza dashboard
+    await carregarDashboard();
+    await carregarRanking();
+
+    // redireciona para dashboard
+    mostrarDashboard();
+
+  } catch (err) {
+    console.error(err);
+
+    alert(
+      "Erro ao salvar prova"
+    );
+  }
+}
 
     const res =
       await fetch(
