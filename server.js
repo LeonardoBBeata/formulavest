@@ -1,4 +1,6 @@
 require('dotenv').config();
+console.log("BREVO KEY:", process.env.BREVO_API_KEY);
+console.log("EMAIL FROM:", process.env.EMAIL_FROM);
 
 const express = require('express');
 const cors = require('cors');
@@ -34,11 +36,12 @@ const db = new Pool({
 // EMAIL (BREVO)
 // ======================
 
-const brevo =
-  new SibApiV3Sdk.TransactionalEmailsApi();
+const brevo = new SibApiV3Sdk.TransactionalEmailsApi();
 
-brevo.authentications.apiKey.apiKey =
-  process.env.BREVO_API_KEY;
+brevo.setApiKey(
+  SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+);
 
 async function enviarEmail(
   para,
