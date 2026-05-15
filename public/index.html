@@ -2,23 +2,28 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
   <title>FórmulaVest</title>
 
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="script.js" defer></script>
 </head>
 <body>
 
   <div class="app-container">
 
-    <!-- Sidebar -->
+    <!-- SIDEBAR -->
     <aside class="sidebar">
       <h2>🎓 FórmulaVest</h2>
 
       <ul>
-        <li data-section="enem" class="active">
+        <li
+          data-section="enem"
+          class="active"
+        >
           Simulado ENEM
         </li>
 
@@ -39,21 +44,27 @@
         </li>
       </ul>
 
-      <button id="logout-btn" class="btn-red">
+      <button
+        id="logout-btn"
+        class="btn-red"
+      >
         Logout
       </button>
     </aside>
 
-    <!-- Conteúdo -->
+    <!-- MAIN -->
     <main class="main-content">
 
       <!-- ENEM -->
-      <section id="enem" class="section">
+      <section
+        id="enem"
+        class="section"
+      >
         <h1>📘 Simulado ENEM</h1>
 
         <div class="card">
           <p>
-            Gere uma prova estilo ENEM com 90 questões.
+            Gere uma prova estilo ENEM.
           </p>
 
           <button id="gerar-enem-btn">
@@ -72,16 +83,20 @@
       </section>
 
       <!-- PROVÃO -->
-      <section id="provao" class="section hidden">
+      <section
+        id="provao"
+        class="section hidden"
+      >
         <h1>📗 Provão Paulista</h1>
 
         <div class="card">
           <p>
-            Gere uma prova baseada em provas anteriores do Provão Paulista.
+            Gere uma prova estilo
+            Provão Paulista.
           </p>
 
           <button id="gerar-provao-btn">
-            Gerar Provão Paulista
+            Gerar Provão
           </button>
         </div>
 
@@ -96,19 +111,31 @@
       </section>
 
       <!-- DASHBOARD -->
-      <section id="dashboard" class="section hidden">
-        <h1>Dashboard</h1>
+      <section
+        id="dashboard"
+        class="section hidden"
+      >
+        <h1>📊 Dashboard</h1>
+
+        <div id="dashboard-container"></div>
       </section>
 
       <!-- RANKING -->
-      <section id="ranking" class="section hidden">
+      <section
+        id="ranking"
+        class="section hidden"
+      >
         <h1>🏆 Ranking</h1>
+
         <div id="ranking-container"></div>
       </section>
 
       <!-- REDAÇÃO -->
-      <section id="redacao" class="section hidden">
-        <h1>Redação</h1>
+      <section
+        id="redacao"
+        class="section hidden"
+      >
+        <h1>✍️ Redação</h1>
 
         <input
           id="tema-redacao"
