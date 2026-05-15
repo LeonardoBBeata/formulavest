@@ -70,6 +70,15 @@ async function initDB() {
     ALTER TABLE usuarios
     ADD COLUMN IF NOT EXISTS email TEXT UNIQUE
   `);
+    await db.query(`
+  CREATE TABLE IF NOT EXISTS provas_ativas(
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    questoes JSONB NOT NULL,
+    finalizada BOOLEAN DEFAULT FALSE,
+    criado_em TIMESTAMP DEFAULT NOW()
+  )
+`);
 
   await db.query(`
     ALTER TABLE usuarios
@@ -650,50 +659,72 @@ app.post(
 // ======================
 app.post('/gerar-provao', auth, async (req, res) => {
   try {
-    const resposta = await chamarIA(`
+    const resposta =
+      await chamarIA(`
 Crie uma prova com 10 questões baseada no estilo do Provão Paulista.
-
-Use provas anteriores como referência.
 
 RETORNE SOMENTE JSON:
 
 {
-  "questoes": [
+  "questoes":[
     {
-      "enunciado": "",
-      "opcoes": {
-        "A": "",
-        "B": "",
-        "C": "",
-        "D": "",
-        "E": ""
+      "enunciado":"",
+      "opcoes":{
+        "A":"",
+        "B":"",
+        "C":"",
+        "D":"",
+        "E":""
       },
-      "correta": "A"
+      "correta":"A"
     }
   ]
 }
 `);
 
-    const json = extrairJSONSeguro(resposta);
+    const json =
+      extrairJSONSeguro(
+        resposta
+      );
 
     if (!json?.questoes) {
       return res.status(500).json({
-        error: "IA inválida"
+        error:
+          "IA inválida"
       });
     }
 
+    const result =
+      await db.query(`
+        INSERT INTO provas_ativas(
+          usuario_id,
+          questoes
+        )
+        VALUES($1,$2)
+        RETURNING id
+      `, [
+        req.user.id,
+        JSON.stringify(
+          json.questoes
+        )
+      ]);
+
+    const provaId =
+      result.rows[0].id;
+
     res.json({
-      questoes: json.questoes
+      prova_id:
+        provaId,
+      questoes:
+        json.questoes
     });
 
   } catch (err) {
-    console.error(
-      "ERRO PROVÃO:",
-      err
-    );
+    console.error(err);
 
     res.status(500).json({
-      error: "Erro gerar Provão"
+      error:
+        "Erro gerar Provão"
     });
   }
 });
@@ -783,35 +814,84 @@ app.post('/gerar-enem', auth, async (req, res) => {
 
     while (questoes.length < 10 && tentativas < 20) {
       tentativas++;
+
       try {
         const resposta = await chamarIA(`
 Crie 10 questões inéditas estilo ENEM.
+
 RETORNE SOMENTE JSON:
 {
-  "questoes": [{
-    "enunciado":"",
-    "opcoes":{"A":"","B":"","C":"","D":"","E":""},
-    "correta":"A"
-  }]
-}`);
+  "questoes":[
+    {
+      "enunciado":"",
+      "opcoes":{
+        "A":"",
+        "B":"",
+        "C":"",
+        "D":"",
+        "E":""
+      },
+      "correta":"A"
+    }
+  ]
+}
+`);
 
-        const json = extrairJSONSeguro(resposta);
+        const json =
+          extrairJSONSeguro(
+            resposta
+          );
+
         if (json?.questoes) {
-          questoes.push(...json.questoes);
+          questoes.push(
+            ...json.questoes
+          );
         }
+
       } catch (e) {
-        console.log('Tentativa falhou:', e.message);
+        console.log(
+          "Tentativa falhou"
+        );
       }
     }
 
     if (questoes.length === 0) {
-      return res.status(500).json({ error: 'Falha ao gerar questões' });
+      return res.status(500).json({
+        error:
+          "Falha ao gerar questões"
+      });
     }
 
-    res.json({ questoes: questoes.slice(0, 10) });
+    const result =
+      await db.query(`
+        INSERT INTO provas_ativas(
+          usuario_id,
+          questoes
+        )
+        VALUES($1,$2)
+        RETURNING id
+      `, [
+        req.user.id,
+        JSON.stringify(
+          questoes
+        )
+      ]);
+
+    const provaId =
+      result.rows[0].id;
+
+    res.json({
+      prova_id: provaId,
+      questoes
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ENEM' });
+
+    res.status(500).json({
+      error:
+        "Erro ENEM"
+    });
   }
 });
 
@@ -820,55 +900,118 @@ RETORNE SOMENTE JSON:
 // ======================
 app.post('/salvar-prova', auth, async (req, res) => {
   try {
-    const { questoes } = req.body;
+    const {
+      prova_id,
+      questoes
+    } = req.body;
+
+    const ativo =
+      await db.query(`
+        SELECT *
+        FROM provas_ativas
+        WHERE id=$1
+        AND usuario_id=$2
+      `, [
+        prova_id,
+        req.user.id
+      ]);
+
+    const prova =
+      ativo.rows[0];
+
+    if (!prova) {
+      return res.status(404).json({
+        error:
+          "Prova não encontrada"
+      });
+    }
+
+    if (prova.finalizada) {
+      return res.status(400).json({
+        error:
+          "Essa prova já foi enviada"
+      });
+    }
 
     let acertos = 0;
-if (!Array.isArray(questoes) || questoes.length === 0) {
-    return res.status(400).json({
-        error: 'Questões inválidas'
-    });
-}
 
-
-questoes.forEach(q => {
-    if (q.selecionada === q.correta) {
+    questoes.forEach(q => {
+      if (
+        q.selecionada ===
+        q.correta
+      ) {
         acertos++;
-    }
-});
+      }
+    });
 
-    const percentual = (acertos / questoes.length) * 100;
-    const xpGanho = Math.floor(percentual);
+    const percentual =
+      (acertos /
+        questoes.length) * 100;
+
+    const xpGanho =
+      Math.floor(
+        percentual
+      );
 
     await db.query(`
       UPDATE usuarios
       SET xp = xp + $1,
-          nivel = FLOOR((xp + $1)/100)+1
+          nivel =
+          FLOOR(
+            (xp + $1)/100
+          ) + 1
       WHERE id = $2
-    `, [xpGanho, req.user.id]);
+    `, [
+      xpGanho,
+      req.user.id
+    ]);
 
-    const result = await db.query(`
-      INSERT INTO provas(usuario_id, acertos, total, percentual, questoes)
-      VALUES($1,$2,$3,$4,$5)
-      RETURNING *
+    await db.query(`
+      INSERT INTO provas(
+        usuario_id,
+        acertos,
+        total,
+        percentual,
+        questoes
+      )
+      VALUES(
+        $1,$2,$3,$4,$5
+      )
     `, [
       req.user.id,
       acertos,
       questoes.length,
       percentual,
-      JSON.stringify(questoes)
+      JSON.stringify(
+        questoes
+      )
     ]);
 
-    cache.del(`provas_${req.user.id}`);
+    await db.query(`
+      UPDATE provas_ativas
+      SET finalizada=TRUE
+      WHERE id=$1
+    `, [
+      prova_id
+    ]);
+
+    cache.del(
+      `provas_${req.user.id}`
+    );
 
     res.json({
       ok: true,
-      prova: result.rows[0],
       acertos,
       percentual
     });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro salvar prova' });
+
+    res.status(500).json({
+      error:
+        "Erro salvar prova"
+    });
   }
 });
 
