@@ -31,36 +31,37 @@ const db = new Pool({
 });
 
 // ======================
-// EMAIL (GMAIL SMTP)
+// EMAIL (BREVO)
 // ======================
 
-const transporter =
-  nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user:
-        process.env.GMAIL_USER,
-      pass:
-        process.env.GMAIL_APP_PASSWORD
-    }
-  });
+const brevo =
+  new SibApiV3Sdk.TransactionalEmailsApi();
+
+brevo.authentications.apiKey.apiKey =
+  process.env.BREVO_API_KEY;
 
 async function enviarEmail(
   para,
   assunto,
   texto,
   html = null
-){
-  await transporter.sendMail({
-    from:
-      `"FórmulaVest" <${process.env.GMAIL_USER}>`,
-    to: para,
+) {
+  await brevo.sendTransacEmail({
+    sender: {
+      name: "FórmulaVest",
+      email: process.env.EMAIL_FROM
+    },
+    to: [
+      {
+        email: para
+      }
+    ],
     subject: assunto,
-    text: texto,
-    html
+    textContent: texto,
+    htmlContent:
+      html || `<p>${texto}</p>`
   });
 }
-
 // ======================
 // MIDDLEWARES
 // ======================
@@ -361,18 +362,17 @@ app.post('/register', async (req, res) => {
         console.log('Tentando enviar email para:', email);
 
         // enviar email
+
+
 await enviarEmail(
   email,
   "Código de verificação - FórmulaVest",
   `Seu código de verificação é: ${codigo}`
 );
 
-if (error) {
-    console.error('ERRO RESEND:', error);
-    throw new Error('Falha ao enviar email');
-}
+console.log("Email enviado com Brevo");
 
-console.log('Email enviado:', data);
+console.log('Email enviado:');
 
         
 
