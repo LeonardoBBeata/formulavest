@@ -1,6 +1,8 @@
 require('dotenv').config();
 
+const crypto = require('crypto');
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -72,7 +74,8 @@ app.use(cors({
   origin: [
     "https://formulavest.onrender.com",
     "http://localhost:5500"
-  ]
+  ],
+  credentials: true
 }));
 
 app.use(express.json());
@@ -102,14 +105,7 @@ await db.query(`
   ALTER TABLE usuarios
   ADD COLUMN IF NOT EXISTS banido BOOLEAN DEFAULT FALSE
 `);
-    await db.query(`
-UPDATE usuarios
-SET
-  senha=$1,
-  reset_token=NULL,
-  reset_expira=NULL
-WHERE id=$2
-`, [hash, user.id]);
+
     
     await db.query(`
   CREATE TABLE IF NOT EXISTS provas_ativas(
@@ -223,7 +219,8 @@ DEFAULT 'aluno'
 async function criarAdmMaster() {
   try {
     const email = "adm@formulavest.com";
-    const senha = "158575";
+    const senha =
+  process.env.MASTER_PASSWORD;
 
     const existe = await db.query(`
       SELECT id
@@ -283,6 +280,17 @@ async function criarAdmMaster() {
     );
   }
 }
+
+const loginLimiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
+    max: 10,
+    message: {
+      error:
+        "Muitas tentativas. Tente novamente depois."
+    }
+  });
 
 
 
@@ -358,6 +366,12 @@ function auth(req, res, next) {
   if (!header) {
     return res.status(401).json({
       error: "Token ausente"
+    });
+  }
+
+  if (!header.startsWith("Bearer ")) {
+    return res.status(401).json({
+      error: "Token inválido"
     });
   }
 
@@ -647,231 +661,270 @@ app.post('/verificar-email', async (req, res) => {
 });
 
 
-app.post('/login-iniciar', async (req, res) => {
-  try {
-    const { email, senha } = req.body;
+app.post(
+  "/login-iniciar",
+  loginLimiter,
+  async (req, res) => {
+    try {
+      const { email, senha } = req.body;
 
-    const result = await db.query(`
-      SELECT *
-      FROM usuarios
-      WHERE email = $1
-    `, [email.toLowerCase()]);
+      const emailNormalizado =
+        email?.toLowerCase()?.trim();
 
-    const user = result.rows[0];
-
-    // usuário não existe
-    if (!user) {
-      return res.status(404).json({
-        error: 'Email não encontrado'
-      });
-    }
-
-    // usuário banido
-    if (user.banido) {
-      return res.status(403).json({
-        error: 'Usuário banido'
-      });
-    }
-
-    // verifica senha
-    const ok = await bcrypt.compare(
-      senha,
-      user.senha
-    );
-
-    if (!ok) {
-      return res.status(401).json({
-        error: 'Senha incorreta'
-      });
-    }
-
-    // ADM MASTER -> pula código
-    if (
-      user.email.toLowerCase() ===
-      'adm@formulavest.com'
-    ) {
-      return res.json({
-        ok: true,
-        adminDirect: true
-      });
-    }
-
-    // gera código para usuário normal
-    const codigo = Math.floor(
-      100000 +
-      Math.random() * 900000
-    ).toString();
-
-    await db.query(`
-      UPDATE usuarios
-      SET codigo_verificacao = $1
-      WHERE id = $2
-    `, [
-      codigo,
-      user.id
-    ]);
-
-    await enviarEmail(
-      user.email,
-      "Código de login - FórmulaVest",
-      `Seu código é: ${codigo}`
-    );
-
-    return res.json({
-      ok: true
-    });
-
-  } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      error: 'Erro login'
-    });
-  }
-});
-
-app.post('/login-confirmar', async (req, res) => {
-  try {
-    const {
-      email,
-      senha,
-      codigo
-    } = req.body;
-
-    const result = await db.query(`
-      SELECT *
-      FROM usuarios
-      WHERE email = $1
-    `, [email.toLowerCase()]);
-
-    const user = result.rows[0];
-
-    // usuário não existe
-    if (!user) {
-      return res.status(404).json({
-        error: 'Usuário não encontrado'
-      });
-    }
-
-    // usuário banido
-    if (user.banido) {
-      return res.status(403).json({
-        error: 'Usuário banido'
-      });
-    }
-
-    // verifica senha
-    const senhaOk =
-      await bcrypt.compare(
-        senha,
-        user.senha
-      );
-
-    if (!senhaOk) {
-      return res.status(401).json({
-        error: 'Senha incorreta'
-      });
-    }
-
-    // só exige código se NÃO for ADM
-    if (
-      user.email.toLowerCase() !==
-      'adm@formulavest.com'
-    ) {
-      if (
-        user.codigo_verificacao !==
-        codigo
-      ) {
+      if (!emailNormalizado) {
         return res.status(400).json({
-          error: 'Código inválido'
+          error: "Email obrigatório"
         });
       }
 
-      // limpa código
+      if (!senha) {
+        return res.status(400).json({
+          error: "Senha obrigatória"
+        });
+      }
+
+      const result = await db.query(`
+        SELECT *
+        FROM usuarios
+        WHERE email = $1
+      `, [emailNormalizado]);
+
+      const user = result.rows[0];
+
+      if (!user) {
+        return res.status(404).json({
+          error: "Email não encontrado"
+        });
+      }
+
+      if (!user.verificado) {
+        return res.status(403).json({
+          error: "Verifique seu email primeiro"
+        });
+      }
+
+      if (user.banido) {
+        return res.status(403).json({
+          error: "Usuário banido"
+        });
+      }
+
+      const senhaOk =
+        await bcrypt.compare(
+          senha,
+          user.senha
+        );
+
+      if (!senhaOk) {
+        return res.status(401).json({
+          error: "Senha incorreta"
+        });
+      }
+
+      if (
+        user.email.toLowerCase() ===
+        "adm@formulavest.com"
+      ) {
+        return res.json({
+          ok: true,
+          adminDirect: true
+        });
+      }
+
+      const codigo = Math.floor(
+        100000 +
+        Math.random() * 900000
+      ).toString();
+
       await db.query(`
         UPDATE usuarios
-        SET codigo_verificacao = NULL
-        WHERE id = $1
-      `, [user.id]);
-    }
+        SET codigo_verificacao=$1
+        WHERE id=$2
+      `, [
+        codigo,
+        user.id
+      ]);
 
-    // gera token
-    const token =
-      gerarToken(user);
+      await enviarEmail(
+        user.email,
+        "Código de login - FórmulaVest",
+        `Seu código é: ${codigo}`
+      );
 
-    return res.json({
-      ok: true,
-      token,
-      role: user.role,
-      empresa_id:
-        user.empresa_id,
-      escola_id:
-        user.escola_id,
-      sala_id:
-        user.sala_id
-    });
+      res.json({
+        ok: true
+      });
 
-  } catch (err) {
-    console.error(err);
+    } catch (err) {
+      console.error(err);
 
-    return res.status(500).json({
-      error: 'Erro login'
-    });
-  }
-});
-
-app.post('/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const result = await db.query(`
-      SELECT id
-      FROM usuarios
-      WHERE email = $1
-    `, [email]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Email não encontrado'
+      res.status(500).json({
+        error: "Erro login"
       });
     }
-
-const token = crypto.randomUUID();
-
-await db.query(`
-  UPDATE usuarios
-  SET
-    reset_token=$1,
-    reset_expira=NOW() + INTERVAL '1 hour'
-  WHERE email=$2
-`, [token, email]);
-
-    const link =
-      `https://formulavest.onrender.com/reset-password.html?token=${token}`;
-
-    await enviarEmail(
-      email,
-      "Recuperar senha - FórmulaVest",
-      `Acesse: ${link}`,
-      `
-      <h2>Recuperar senha</h2>
-      <p>Clique abaixo:</p>
-      <a href="${link}">Alterar senha</a>
-      `
-    );
-
-    res.json({
-      message: "Link enviado"
-    });
-
-  } catch (err) {
-    console.error(err);
-
-    res.status(500).json({
-      error: "Erro"
-    });
   }
-});
+);
+app.post(
+  "/login-confirmar",
+  loginLimiter,
+  async (req, res) => {
+    try {
+      const {
+        email,
+        senha,
+        codigo
+      } = req.body;
+
+      const emailNormalizado =
+        email?.toLowerCase()?.trim();
+
+      if (!emailNormalizado) {
+        return res.status(400).json({
+          error: "Email obrigatório"
+        });
+      }
+
+      const result = await db.query(`
+        SELECT *
+        FROM usuarios
+        WHERE email = $1
+      `, [emailNormalizado]);
+
+      const user = result.rows[0];
+
+      if (!user) {
+        return res.status(404).json({
+          error: "Usuário não encontrado"
+        });
+      }
+
+      if (user.banido) {
+        return res.status(403).json({
+          error: "Usuário banido"
+        });
+      }
+
+      const senhaOk =
+        await bcrypt.compare(
+          senha,
+          user.senha
+        );
+
+      if (!senhaOk) {
+        return res.status(401).json({
+          error: "Senha incorreta"
+        });
+      }
+
+      if (
+        user.email.toLowerCase() !==
+        "adm@formulavest.com"
+      ) {
+        if (
+          user.codigo_verificacao !==
+          codigo
+        ) {
+          return res.status(400).json({
+            error: "Código inválido"
+          });
+        }
+
+        await db.query(`
+          UPDATE usuarios
+          SET codigo_verificacao=NULL
+          WHERE id=$1
+        `, [user.id]);
+      }
+
+      const token =
+        gerarToken(user);
+
+      res.json({
+        ok: true,
+        token,
+        role: user.role,
+        empresa_id:
+          user.empresa_id,
+        escola_id:
+          user.escola_id,
+        sala_id:
+          user.sala_id
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error: "Erro login"
+      });
+    }
+  }
+);
+
+app.post(
+  "/forgot-password",
+  async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const result =
+        await db.query(`
+          SELECT id
+          FROM usuarios
+          WHERE email=$1
+        `, [email]);
+
+      if (
+        result.rows.length === 0
+      ) {
+        return res.json({
+          message:
+            "Se o email existir, enviaremos um link."
+        });
+      }
+
+      const token =
+        crypto.randomUUID();
+
+      await db.query(`
+        UPDATE usuarios
+        SET
+          reset_token=$1,
+          reset_expira=
+            NOW() + INTERVAL '1 hour'
+        WHERE email=$2
+      `, [token, email]);
+
+      const link =
+        `https://formulavest.onrender.com/reset-password.html?token=${token}`;
+
+      await enviarEmail(
+        email,
+        "Recuperar senha - FórmulaVest",
+        `Acesse: ${link}`,
+        `
+        <h2>Recuperar senha</h2>
+        <p>Clique abaixo:</p>
+        <a href="${link}">
+          Alterar senha
+        </a>
+        `
+      );
+
+      res.json({
+        message:
+          "Se o email existir, enviaremos um link."
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error: "Erro"
+      });
+    }
+  }
+);
 
 app.post(
   "/reset-password",
@@ -894,23 +947,25 @@ app.post(
           });
       }
 
-const result = await db.query(`
-  SELECT *
-  FROM usuarios
-  WHERE reset_token=$1
-  AND reset_expira > NOW()
-`, [token]);
+      const result =
+        await db.query(`
+          SELECT *
+          FROM usuarios
+          WHERE reset_token=$1
+          AND reset_expira > NOW()
+        `, [token]);
 
-const user = result.rows[0];
+      const user =
+        result.rows[0];
 
-if (!user) {
-  return res.status(400).json({
-    error: "Token inválido"
-  });
-}
-
-      const email =
-        decoded.email;
+      if (!user) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Token inválido ou expirado"
+          });
+      }
 
       const hash =
         await bcrypt.hash(
@@ -918,14 +973,17 @@ if (!user) {
           10
         );
 
-      await db.query(
-        `
+      await db.query(`
         UPDATE usuarios
-        SET senha = $1
-        WHERE email = $2
-        `,
-        [hash, email]
-      );
+        SET
+          senha=$1,
+          reset_token=NULL,
+          reset_expira=NULL
+        WHERE id=$2
+      `, [
+        hash,
+        user.id
+      ]);
 
       res.json({
         ok: true,
@@ -936,15 +994,13 @@ if (!user) {
     } catch (err) {
       console.error(err);
 
-      res.status(400).json({
+      res.status(500).json({
         error:
-          "Token inválido ou expirado"
+          "Erro ao resetar senha"
       });
     }
   }
 );
-
-
 // ======================
 // ADMIN CHECK
 // ======================
@@ -1054,39 +1110,7 @@ app.get(
 
 
 //empresas
-app.post(
-  "/admin/criar-empresa",
-  auth,
-  permitir(
-    "formulavest_master"
-  ),
-  async (req, res) => {
-    try {
-      const {
-        nome
-      } = req.body;
 
-      await db.query(`
-        INSERT INTO empresas(
-          nome
-        )
-        VALUES($1)
-      `, [nome]);
-
-      res.json({
-        ok: true
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      res.status(500).json({
-        error:
-          "Erro criar empresa"
-      });
-    }
-  }
-);
 
 //periodos
 app.post(
@@ -1481,8 +1505,7 @@ app.post(
 
       // só MASTER pode criar empresa_admin
       if (
-        role ===
-        "empresa_admin" &&
+        role === "empresa_admin" &&
         req.user.role !==
         "formulavest_master"
       ) {
@@ -1493,12 +1516,6 @@ app.post(
               "Sem permissão"
           });
       }
-
-      const hash =
-        await bcrypt.hash(
-          senha,
-          10
-        );
 
       let empresaId =
         req.user.empresa_id;
@@ -1547,6 +1564,39 @@ app.post(
           req.user.escola_id;
       }
 
+      // verificar se já existe
+      const existe =
+        await db.query(`
+          SELECT id
+          FROM usuarios
+          WHERE email=$1
+             OR username=$2
+        `, [
+          email
+            .toLowerCase()
+            .trim(),
+          username
+        ]);
+
+      if (
+        existe.rows.length > 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Usuário já existe"
+          });
+      }
+
+      // gerar hash só depois
+      const hash =
+        await bcrypt.hash(
+          senha,
+          10
+        );
+
+      // inserir
       await db.query(`
         INSERT INTO usuarios(
           username,
@@ -1563,7 +1613,9 @@ app.post(
         )
       `, [
         username,
-        email,
+        email
+          .toLowerCase()
+          .trim(),
         hash,
         role,
         empresaId,
@@ -2171,7 +2223,6 @@ app.post(
   ),
   async (req, res) => {
     try {
-
       const {
         username,
         email,
@@ -2179,12 +2230,50 @@ app.post(
         empresa_id
       } = req.body;
 
+      // validações básicas
+      if (!username || username.length < 3) {
+        return res.status(400).json({
+          error: "Username inválido"
+        });
+      }
+
+      if (!email) {
+        return res.status(400).json({
+          error: "Email obrigatório"
+        });
+      }
+
+      if (!senha || senha.length < 8) {
+        return res.status(400).json({
+          error: "Senha muito curta"
+        });
+      }
+
+      // verificar duplicado
+      const existe = await db.query(`
+        SELECT id
+        FROM usuarios
+        WHERE email=$1
+           OR username=$2
+      `, [
+        email.toLowerCase().trim(),
+        username
+      ]);
+
+      if (existe.rows.length > 0) {
+        return res.status(400).json({
+          error: "Usuário já existe"
+        });
+      }
+
+      // gerar hash só depois
       const hash =
         await bcrypt.hash(
           senha,
           10
         );
 
+      // inserir admin
       await db.query(`
         INSERT INTO usuarios(
           username,
@@ -2202,7 +2291,7 @@ app.post(
         )
       `, [
         username,
-        email,
+        email.toLowerCase().trim(),
         hash,
         empresa_id
       ]);
@@ -2612,10 +2701,13 @@ app.get('/provas', auth, async (req, res) => {
 //teste email
 //=======================
 app.get(
-  '/teste-email',
+  "/teste-email",
+  auth,
+  permitir(
+    "formulavest_master"
+  ),
   async (_, res) => {
     try {
-
       await enviarEmail(
         "leonardo.beata@aluno.cps.sp.gov.br",
         "Teste FórmulaVest",
