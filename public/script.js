@@ -294,6 +294,79 @@ async function animarXP(ganho) {
   atualizarUI();
 }
 
+
+let perfil = {
+  nome: "",
+  email: "",
+  foto: ""
+};
+
+async function carregarPerfil() {
+  const res = await fetch(`${API}/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+
+  perfil = data;
+
+  document.getElementById("profile-avatar").src = data.foto || "default.png";
+  document.getElementById("profile-preview").src = data.foto || "default.png";
+
+  document.getElementById("nome-input").value = data.nome;
+  document.getElementById("email-input").value = data.email;
+}
+
+function abrirPerfil() {
+  document.getElementById("profile-modal").classList.remove("hidden");
+  carregarPerfil();
+}
+
+function fecharPerfil() {
+  document.getElementById("profile-modal").classList.add("hidden");
+}
+
+document.getElementById("foto-input").addEventListener("change", function () {
+  const file = this.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+    document.getElementById("profile-preview").src = e.target.result;
+    perfil.foto = e.target.result;
+  };
+
+  reader.readAsDataURL(file);
+});
+
+async function salvarPerfil() {
+  const nome = document.getElementById("nome-input").value;
+  const email = document.getElementById("email-input").value;
+  const senha = document.getElementById("senha-input").value;
+
+  const res = await fetch(`${API}/atualizar-perfil`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      nome,
+      email,
+      senha,
+      foto: perfil.foto
+    })
+  });
+
+  const data = await res.json();
+
+  alert("Perfil atualizado!");
+
+  // atualiza avatar do botão
+  document.getElementById("profile-avatar").src = data.foto;
+
+  fecharPerfil();
+}
+
 // ======================
 // STREAK
 // ======================
