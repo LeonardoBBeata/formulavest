@@ -1,137 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="admin.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="admin.js" defer></script>
+<meta charset="UTF-8">
+<title>Painel</title>
+<link rel="stylesheet" href="admin.css">
 </head>
 <body>
 
-<div class="admin-wrapper">
+<div class="box">
+  <h1>Admin</h1>
 
-  <aside class="admin-sidebar" id="admin-sidebar">
-    <h2 class="logo">ADMIN</h2>
+  <input
+    id="email"
+    placeholder="Email"
+  >
 
-    <ul>
-      <li data-section="provas" class="active">
-        📄 Provas
-      </li>
+  <input
+    id="senha"
+    type="password"
+    placeholder="Senha"
+  >
 
-      <li data-section="usuarios">
-        👤 Usuários
-      </li>
+  <button id="login-btn">
+    Entrar
+  </button>
 
-      <li data-section="estatisticas">
-        📊 Estatísticas
-      </li>
-    </ul>
-
-    <button id="toggle-sidebar">
-      ⬅
-    </button>
-  </aside>
-
-  <main class="admin-main">
-
-    <!-- LOGIN -->
-    <div id="login-admin">
-      <h1>Login Administrativo</h1>
-
-      <input
-        id="admin-email"
-        type="email"
-        placeholder="Email"
-      >
-
-      <input
-        id="admin-senha"
-        type="password"
-        placeholder="Senha"
-      >
-
-      <button id="admin-login-btn">
-        Entrar
-      </button>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div
-      id="admin-dashboard"
-      class="hidden"
-    >
-
-      <!-- PROVAS -->
-      <section
-        id="provas"
-        class="admin-section"
-      >
-        <div class="section-header">
-          <h2>Provas Realizadas</h2>
-
-          <button id="refresh-provas-btn">
-            🔄 Atualizar
-          </button>
-        </div>
-
-        <input
-          type="text"
-          id="filtro-usuario"
-          placeholder="Filtrar por usuário"
-        >
-
-        <div id="provas-container"></div>
-      </section>
-
-      <!-- USUÁRIOS -->
-      <section
-        id="usuarios"
-        class="admin-section hidden"
-      >
-        <h2>Criar Usuário</h2>
-
-        <input
-          id="novo-username"
-          placeholder="Username"
-        >
-
-        <input
-          id="novo-senha"
-          type="password"
-          placeholder="Senha"
-        >
-
-        <button id="criar-usuario-btn">
-          Criar Usuário
-        </button>
-
-        <p id="msg-admin"></p>
-
-        <div id="lista-usuarios"></div>
-      </section>
-
-      <!-- ESTATÍSTICAS -->
-      <section
-        id="estatisticas"
-        class="admin-section hidden"
-      >
-        <h2>Estatísticas</h2>
-        <div id="estatisticas-admin"></div>
-      </section>
-
-      <button
-        id="admin-logout"
-        class="btn-logout"
-      >
-        Logout
-      </button>
-
-    </div>
-
-  </main>
+  <p id="msg"></p>
 </div>
 
+<script src="admin.js"></script>
 </body>
 </html>
