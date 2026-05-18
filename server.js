@@ -15,6 +15,22 @@ const PDFDocument = require('pdfkit');
 const validator = require('validator');
 const { Pool } = require('pg');
 
+const multer = require("multer");
+const path = require("path");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "public/uploads");
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const name = req.user.id + "-" + Date.now() + ext;
+    cb(null, name);
+  }
+});
+
+const upload = multer({ storage });
+
 const app = express();
 
 app.set("trust proxy", 1);
@@ -311,6 +327,32 @@ function mesmaEmpresa(req, usuarioEmpresaId) {
   return req.user.empresa_id === usuarioEmpresaId;
 }
 
+
+//foto
+app.post("/upload-foto", auth, upload.single("foto"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhuma imagem enviada" });
+    }
+
+    const fotoUrl = `/uploads/${req.file.filename}`;
+
+    await db.query(`
+      UPDATE usuarios
+      SET foto = $1
+      WHERE id = $2
+    `, [fotoUrl, req.user.id]);
+
+    res.json({
+      ok: true,
+      foto: fotoUrl
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro upload foto" });
+  }
+});
 
 // ======================
 // JWT
