@@ -1832,7 +1832,7 @@ if (!user.foto) {
         nivel: user.nivel || 1
       });
 
-    } catch (err) {
+     catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro ao buscar usuário" });
     }
