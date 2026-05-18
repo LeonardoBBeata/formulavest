@@ -1803,27 +1803,57 @@ app.get(
 );
 
 
-app.post("/atualizar-perfil", auth, async (req, res) => {
-  const { nome, email, senha, foto } = req.body;
+app.put("/atualizar-perfil", auth, async (req, res) => {
+  try {
+    const { nome, email, senha, foto } = req.body;
 
-  const user = await User.findById(req.user.id);
+    const userResult = await db.query(`
+      SELECT * FROM usuarios WHERE id = $1
+    `, [req.user.id]);
 
-  if (nome) user.nome = nome;
-  if (email) user.email = email;
-  if (foto) user.foto = foto;
+    const user = userResult.rows[0];
 
-  if (senha && senha.length > 0) {
-    const bcrypt = require("bcrypt");
-    user.senha = await bcrypt.hash(senha, 10);
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    let novoNome = nome || user.username;
+    let novoEmail = email || user.email;
+    let novaFoto = foto || user.foto;
+
+    let novaSenha = user.senha;
+
+    if (senha && senha.length >= 8) {
+      novaSenha = await bcrypt.hash(senha, 10);
+    }
+
+    await db.query(`
+      UPDATE usuarios
+      SET
+        username = $1,
+        email = $2,
+        senha = $3,
+        foto = $4
+      WHERE id = $5
+    `, [
+      novoNome,
+      novoEmail,
+      novaSenha,
+      novaFoto,
+      req.user.id
+    ]);
+
+    res.json({
+      ok: true,
+      nome: novoNome,
+      email: novoEmail,
+      foto: novaFoto
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao atualizar perfil" });
   }
-
-  await user.save();
-
-  res.json({
-    nome: user.nome,
-    email: user.email,
-    foto: user.foto
-  });
 });
 // ======================
 // ADMIN STATS
