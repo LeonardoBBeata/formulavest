@@ -11,9 +11,6 @@ let provaId = null;
 let respostasUser = {};
 let grafico = null;
 
-let xpAtual = 0;
-let nivelAtual = 1;
-
 // ======================
 // INIT
 // ======================
@@ -21,18 +18,29 @@ window.addEventListener("DOMContentLoaded", () => {
   configurarAbas();
   configurarBotoes();
   configurarLogout();
+  configurarPerfil();
 
   carregarDashboard();
   carregarRanking();
   carregarGrafico();
-  carregarDuolingo();
-  atualizarStreak();
+  carregarUser();
 });
 
 // ======================
 // HELPERS
 // ======================
 const el = (id) => document.getElementById(id);
+
+// ======================
+// PERFIL BOLINHA
+// ======================
+function configurarPerfil() {
+  const avatar = el("avatar-mini");
+
+  avatar?.addEventListener("click", () => {
+    window.location.href = "/perfil.html";
+  });
+}
 
 // ======================
 // ABAS
@@ -46,7 +54,6 @@ function configurarAbas() {
       document.querySelectorAll(".section").forEach(s => s.classList.add("hidden"));
 
       item.classList.add("active");
-
       el(alvo)?.classList.remove("hidden");
     });
   });
@@ -66,7 +73,7 @@ function configurarBotoes() {
 }
 
 // ======================
-// DASHBOARD (FUNCIONAL)
+// DASHBOARD
 // ======================
 async function carregarDashboard() {
   try {
@@ -78,85 +85,86 @@ async function carregarDashboard() {
 
     el("dashboard-container").innerHTML = `
       <div class="card">
-        <p>Total de provas: ${data.total_provas || 0}</p>
-        <p>Média de acertos: ${data.media_acertos || 0}%</p>
-        <p>Melhor score: ${data.melhor_score || 0}</p>
+        <p>Total de provas: ${data.provas?.length || 0}</p>
       </div>
     `;
   } catch (e) {
-    console.error("Dashboard erro:", e);
+    console.error(e);
   }
 }
 
 // ======================
-// RANKING (TOP 3 + LISTA)
+// USER (XP)
+// ======================
+async function carregarUser() {
+  const res = await fetch(`${API}/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const user = await res.json();
+
+  el("xp-total").innerText = user.xp || 0;
+  el("nivel-user").innerText = user.nivel || 1;
+
+  el("xp-bar-fill").style.width = `${(user.xp || 0) % 100}%`;
+}
+
+// ======================
+// RANKING
 // ======================
 async function carregarRanking() {
-  try {
-    const res = await fetch(`${API}/ranking`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  const res = await fetch(`${API}/ranking`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
 
-    const data = await res.json();
+  const data = await res.json();
 
-    // TOP 3
-    const top3 = data.slice(0, 3);
+  const top3 = data.slice(0, 3);
 
-    el("top3").innerHTML = top3.map((u, i) => `
-      <div class="card">
-        <h3>${i + 1}º ${u.nome}</h3>
-        <p>${u.xp} XP</p>
-      </div>
-    `).join("");
+  el("top3").innerHTML = top3.map((u, i) => `
+    <div class="card">
+      <h3>${i + 1}º ${u.username}</h3>
+      <p>${u.xp} XP</p>
+    </div>
+  `).join("");
 
-    // RESTO
-    el("ranking-list").innerHTML = data.map((u, i) => `
-      <div>
-        ${i + 1} - ${u.nome} | ${u.xp} XP
-      </div>
-    `).join("");
-
-  } catch (e) {
-    console.error("Ranking erro:", e);
-  }
+  el("ranking-list").innerHTML = data.map((u, i) => `
+    <div>
+      ${i + 1} - ${u.username} | ${u.xp} XP
+    </div>
+  `).join("");
 }
 
 // ======================
-// GRÁFICO (CORRIGIDO PRO TEU HTML)
+// GRÁFICO
 // ======================
 async function carregarGrafico() {
-  try {
-    const res = await fetch(`${API}/grafico`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  const res = await fetch(`${API}/grafico`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
 
-    const data = await res.json();
+  const data = await res.json();
 
-    const ctx = el("graficoEvolucao");
+  const ctx = el("graficoEvolucao");
+  if (!ctx) return;
 
-    if (!ctx) return;
+  if (grafico) grafico.destroy();
 
-    if (grafico) grafico.destroy();
-
-    grafico = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: data.labels,
-        datasets: [{
-          label: "Acertos",
-          data: data.valores,
-          borderWidth: 2
-        }]
-      }
-    });
-
-  } catch (e) {
-    console.error("Grafico erro:", e);
-  }
+  grafico = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: Object.keys(data),
+      datasets: [{
+        label: "Acertos",
+        data: Object.values(data),
+        borderWidth: 2
+      }]
+    }
+  });
 }
 
 // ======================
-// PROVAS
+// PROVA ENEM
 // ======================
 async function gerarEnem() {
   const res = await fetch(`${API}/gerar-enem`, {
@@ -170,9 +178,12 @@ async function gerarEnem() {
   provaId = data.prova_id;
   respostasUser = {};
 
-  renderProva(data.questoes, "enem-container", "finalizar-enem-btn");
+  renderProva(questoes, "enem-container", "finalizar-enem-btn");
 }
 
+// ======================
+// PROVA PROVÃO
+// ======================
 async function gerarProvao() {
   const res = await fetch(`${API}/gerar-provao`, {
     method: "POST",
@@ -185,13 +196,13 @@ async function gerarProvao() {
   provaId = data.prova_id;
   respostasUser = {};
 
-  renderProva(data.questoes, "provao-container", "finalizar-provao-btn");
+  renderProva(questoes, "provao-container", "finalizar-provao-btn");
 }
 
 // ======================
 // RENDER PROVA
 // ======================
-function renderProva(lista, containerId, btnFinalizar) {
+function renderProva(lista, containerId, btnId) {
   const container = el(containerId);
   container.innerHTML = "";
 
@@ -209,7 +220,7 @@ function renderProva(lista, containerId, btnFinalizar) {
     `;
   });
 
-  el(btnFinalizar)?.classList.remove("hidden");
+  el(btnId)?.classList.remove("hidden");
 }
 
 // ======================
@@ -229,7 +240,7 @@ function selecionar(index, letra, elClicked) {
 }
 
 // ======================
-// SALVAR RESULTADO
+// SALVAR
 // ======================
 async function salvarResultado() {
   const respostas = questoes.map((q, i) => ({
@@ -280,33 +291,6 @@ async function corrigirRedacao() {
 
   el("feedback-redacao").innerText =
     `Nota: ${data.nota_total}\n${data.feedback}`;
-}
-
-// ======================
-// XP / USER
-// ======================
-async function carregarDuolingo() {
-  const res = await fetch(`${API}/me`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-
-  const user = await res.json();
-
-  xpAtual = user.xp || 0;
-  nivelAtual = user.nivel || 1;
-
-  el("xp-total").innerText = xpAtual;
-  el("nivel-user").innerText = nivelAtual;
-
-  el("xp-bar-fill").style.width = `${xpAtual % 100}%`;
-}
-
-// ======================
-// STREAK
-// ======================
-function atualizarStreak() {
-  const streak = Number(localStorage.getItem("streak") || 0);
-  el("streak-days").innerText = `${streak} dias 🔥`;
 }
 
 // ======================
