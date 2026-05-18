@@ -96,10 +96,7 @@ async function initDB() {
     )
   `);
 
-  await db.query(`
-    ALTER TABLE usuarios
-    ADD COLUMN IF NOT EXISTS email TEXT UNIQUE
-  `);
+
 await db.query(`
   ALTER TABLE usuarios
   ADD COLUMN IF NOT EXISTS banido BOOLEAN DEFAULT FALSE
@@ -569,13 +566,19 @@ const user = result.rows[0];
 
 if (!user) {
   return res.status(404).json({
-    error: 'Email não encontrado'
+    error: "Email não encontrado"
   });
 }
 
 if (user.banido) {
   return res.status(403).json({
-    error: 'Usuário banido'
+    error: "Usuário banido"
+  });
+}
+
+if (!user.verificado) {
+  return res.status(403).json({
+    error: "Email ainda não verificado"
   });
 }
 
