@@ -150,6 +150,67 @@ await db.query(`
 ALTER TABLE usuarios
 ADD COLUMN IF NOT EXISTS reset_expira TIMESTAMP
 `);
+    await db.query(`
+CREATE TABLE IF NOT EXISTS empresas(
+  id SERIAL PRIMARY KEY,
+  nome TEXT NOT NULL,
+  criado_em TIMESTAMP DEFAULT NOW()
+)
+`);
+    await db.query(`
+CREATE TABLE IF NOT EXISTS escolas(
+  id SERIAL PRIMARY KEY,
+  empresa_id INTEGER
+    REFERENCES empresas(id)
+    ON DELETE CASCADE,
+  nome TEXT NOT NULL
+)
+`);
+    await db.query(`
+CREATE TABLE IF NOT EXISTS periodos(
+  id SERIAL PRIMARY KEY,
+  escola_id INTEGER
+    REFERENCES escolas(id)
+    ON DELETE CASCADE,
+  nome TEXT NOT NULL
+)
+`);
+    await db.query(`
+CREATE TABLE IF NOT EXISTS salas(
+  id SERIAL PRIMARY KEY,
+  periodo_id INTEGER
+    REFERENCES periodos(id)
+    ON DELETE CASCADE,
+  nome TEXT NOT NULL
+)
+`);
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS empresa_id INTEGER
+REFERENCES empresas(id)
+`);
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS escola_id INTEGER
+REFERENCES escolas(id)
+`);
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS periodo_id INTEGER
+REFERENCES periodos(id)
+`);
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS sala_id INTEGER
+REFERENCES salas(id)
+`);
+    await db.query(`
+ALTER TABLE usuarios
+ADD COLUMN IF NOT EXISTS role TEXT
+DEFAULT 'aluno'
+`);
+
+    
 
   console.log('Banco OK');
 }
@@ -158,49 +219,71 @@ initDB().catch(err => {
     console.error('Erro ao iniciar banco:', err);
     process.exit(1);
 });
+// ======================
+// roles
+// ======================
+
+function mesmaEmpresa(req, usuarioEmpresaId) {
+  return req.user.empresa_id === usuarioEmpresaId;
+}
+
 
 // ======================
 // JWT
 // ======================
-
 function gerarToken(user) {
-    return jwt.sign(
-        {
-            id: user.id,
-            username: user.username
-        },
-        process.env.JWT_SECRET,
-        {
-            expiresIn: '7d'
-        }
-    );
+  return jwt.sign(
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      empresa_id: user.empresa_id,
+      escola_id: user.escola_id,
+      sala_id: user.sala_id
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "7d"
+    }
+  );
+}
+
+    function permitir(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: "Sem permissão"
+      });
+    }
+
+    next();
+  };
 }
 
 function auth(req, res, next) {
+  const header = req.headers.authorization;
 
-    const header = req.headers.authorization;
+  if (!header) {
+    return res.status(401).json({
+      error: "Token ausente"
+    });
+  }
 
-    if (!header) {
-        return res.status(401).json({
-            error: 'Token ausente'
-        });
-    }
+  const token = header.split(" ")[1];
 
-    const token = header.split(' ')[1];
+  try {
+    req.user = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    try {
-        req.user = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
+    next();
 
-        next();
-
-    } catch {
-        return res.status(401).json({
-            error: 'Token inválido'
-        });
-    }
+  } catch {
+    return res.status(401).json({
+      error: "Token inválido"
+    });
+  }
 }
 
 // ======================
@@ -399,24 +482,6 @@ console.log('Email enviado:');
 // MIDDLEWARE ADM
 // ======================
 
-function adminAuth(req, res, next) {
-  const adminCookie =
-    req.cookies.admin;
-
-  if (
-    adminCookie === "true"
-  ) {
-    return next();
-  }
-
-  return res
-    .status(401)
-    .json({
-      error:
-        "Não autorizado"
-    });
-}
-
 
 // ======================
 // VERIFY EMAIL
@@ -547,7 +612,7 @@ app.post('/login-iniciar', async (req,res)=>{
   }
 });
 
-app.post('/login-confirmar', async (req, res) => {
+app.post("/login-confirmar", async (req, res) => {
   try {
     const {
       email,
@@ -555,83 +620,60 @@ app.post('/login-confirmar', async (req, res) => {
       codigo
     } = req.body;
 
-    const result =
-      await db.query(`
-        SELECT *
-        FROM usuarios
-        WHERE email=$1
-      `, [email]);
+    const result = await db.query(`
+      SELECT *
+      FROM usuarios
+      WHERE email=$1
+    `, [email]);
 
-    const user =
-      result.rows[0];
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(404).json({
-        error:
-          "Usuário não encontrado"
+        error: "Usuário não encontrado"
       });
     }
 
     if (user.banido) {
       return res.status(403).json({
-        error:
-          "Usuário banido"
+        error: "Usuário banido"
       });
     }
 
     if (
-      user.codigo_verificacao
-      !== codigo
+      user.codigo_verificacao !== codigo
     ) {
       return res.status(400).json({
-        error:
-          "Código inválido"
+        error: "Código inválido"
       });
     }
 
-    const ok =
-      await bcrypt.compare(
-        senha,
-        user.senha
-      );
+    const ok = await bcrypt.compare(
+      senha,
+      user.senha
+    );
 
     if (!ok) {
       return res.status(401).json({
-        error:
-          "Senha incorreta"
+        error: "Senha incorreta"
       });
     }
 
-    const token =
-      gerarToken(user);
-
-    const isAdmin =
-      email ===
-      process.env.ADMIN_EMAIL;
-
-    if (isAdmin) {
-      res.cookie(
-        "admin",
-        "true",
-        {
-          httpOnly: true,
-          sameSite: "lax"
-        }
-      );
-    }
+    const token = gerarToken(user);
 
     res.json({
       ok: true,
       token,
-      admin: isAdmin
+      role: user.role,
+      empresa_id: user.empresa_id,
+      escola_id: user.escola_id
     });
 
   } catch (err) {
     console.error(err);
 
     res.status(500).json({
-      error:
-        "Erro login"
+      error: "Erro login"
     });
   }
 });
@@ -853,19 +895,60 @@ app.get(
 // ADMIN USUÁRIOS
 // ======================
 app.get(
-  '/admin/usuarios',
-  adminAuth,
-  async (_, res) => {
+  "/admin/usuarios",
+  auth,
+  async (req, res) => {
     try {
-      const result =
-        await db.query(`
-          SELECT
-            id,
-            username,
-            banido
+      let result;
+
+      if (
+        req.user.role ===
+        "empresa_admin"
+      ) {
+        result = await db.query(`
+          SELECT *
           FROM usuarios
-          ORDER BY id DESC
-        `);
+          WHERE empresa_id=$1
+        `, [
+          req.user.empresa_id
+        ]);
+
+      } else if (
+        req.user.role ===
+        "diretor"
+      ) {
+        result = await db.query(`
+          SELECT *
+          FROM usuarios
+          WHERE escola_id=$1
+        `, [
+          req.user.escola_id
+        ]);
+
+      } else if (
+        req.user.role ===
+        "coordenador"
+      ) {
+        result = await db.query(`
+          SELECT *
+          FROM usuarios
+          WHERE escola_id=$1
+          AND role IN (
+            'professor',
+            'aluno'
+          )
+        `, [
+          req.user.escola_id
+        ]);
+
+      } else {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
 
       res.json({
         usuarios:
@@ -877,7 +960,7 @@ app.get(
 
       res.status(500).json({
         error:
-          'Erro usuários'
+          "Erro listar"
       });
     }
   }
@@ -887,26 +970,23 @@ app.get(
 // ADMIN CRIAR USUÁRIO
 // ======================
 app.post(
-  '/admin/criar-usuario',
-  adminAuth,
+  "/admin/criar-usuario",
+  auth,
+  permit(
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
   async (req, res) => {
     try {
       const {
         username,
-        senha
+        email,
+        senha,
+        role,
+        escola_id,
+        sala_id
       } = req.body;
-
-      if (
-        !username ||
-        !senha
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              'Campos obrigatórios'
-          });
-      }
 
       const hash =
         await bcrypt.hash(
@@ -914,15 +994,60 @@ app.post(
           10
         );
 
+      let empresaId =
+        req.user.empresa_id;
+
+      let novaEscola =
+        escola_id;
+
+      if (
+        req.user.role === "diretor"
+      ) {
+        novaEscola =
+          req.user.escola_id;
+      }
+
+      if (
+        req.user.role ===
+        "coordenador"
+      ) {
+        if (
+          role !== "professor" &&
+          role !== "aluno"
+        ) {
+          return res
+            .status(403)
+            .json({
+              error:
+                "Sem permissão"
+            });
+        }
+
+        novaEscola =
+          req.user.escola_id;
+      }
+
       await db.query(`
         INSERT INTO usuarios(
           username,
-          senha
+          email,
+          senha,
+          role,
+          empresa_id,
+          escola_id,
+          sala_id
         )
-        VALUES($1,$2)
+        VALUES(
+          $1,$2,$3,$4,$5,$6,$7
+        )
       `, [
         username,
-        hash
+        email,
+        hash,
+        role,
+        empresaId,
+        novaEscola,
+        sala_id
       ]);
 
       res.json({
@@ -934,22 +1059,52 @@ app.post(
 
       res.status(500).json({
         error:
-          'Erro criar usuário'
+          "Erro criar usuário"
       });
     }
   }
 );
-
 // ======================
 // BANIR/DESBANIR
 // ======================
 app.put(
-  '/admin/usuario/:id/banir',
-  adminAuth,
+  "/admin/usuario/:id/banir",
+  auth,
   async (req, res) => {
     try {
       const id =
         req.params.id;
+
+      const alvo =
+        await db.query(`
+          SELECT *
+          FROM usuarios
+          WHERE id=$1
+        `, [id]);
+
+      const user =
+        alvo.rows[0];
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Usuário não encontrado"
+          });
+      }
+
+      if (
+        user.empresa_id !==
+        req.user.empresa_id
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
 
       await db.query(`
         UPDATE usuarios
@@ -967,7 +1122,7 @@ app.put(
 
       res.status(500).json({
         error:
-          'Erro banir'
+          "Erro banir"
       });
     }
   }
@@ -977,12 +1132,43 @@ app.put(
 // EXCLUIR USUÁRIO
 // ======================
 app.delete(
-  '/admin/usuario/:id',
-  adminAuth,
+  "/admin/usuario/:id",
+  auth,
   async (req, res) => {
     try {
       const id =
         req.params.id;
+
+      const alvo =
+        await db.query(`
+          SELECT *
+          FROM usuarios
+          WHERE id=$1
+        `, [id]);
+
+      const user =
+        alvo.rows[0];
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Usuário não encontrado"
+          });
+      }
+
+      if (
+        user.empresa_id !==
+        req.user.empresa_id
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
 
       await db.query(`
         DELETE FROM usuarios
@@ -998,9 +1184,39 @@ app.delete(
 
       res.status(500).json({
         error:
-          'Erro excluir'
+          "Erro excluir"
       });
     }
+  }
+);
+
+
+
+//=======================
+// ROLES
+//=======================
+app.get(
+  "/me",
+  auth,
+  async (req, res) => {
+    const result =
+      await db.query(`
+        SELECT
+          id,
+          username,
+          role,
+          empresa_id,
+          escola_id,
+          sala_id
+        FROM usuarios
+        WHERE id=$1
+      `, [
+        req.user.id
+      ]);
+
+    res.json(
+      result.rows[0]
+    );
   }
 );
 
