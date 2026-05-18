@@ -1,411 +1,405 @@
 :root {
-    --bg: #0b1220;
-    --sidebar: #0f172a;
-    --card: #111827;
-    --card-2: #0f172a;
-
-    --text: #e5e7eb;
-    --muted: #94a3b8;
-
-    --border: #1f2937;
-
-    --primary: #3b82f6;
-    --primary-2: #2563eb;
-
-    --danger: #ef4444;
-    --success: #22c55e;
-
-    --gold: #fbbf24;
+  --bg: #0b1220;
+  --sidebar: #0f172a;
+  --card: #111c2e;
+  --card-2: #0f1a2b;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --border: #243244;
+  --primary: #3b82f6;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #facc15;
 }
 
 /* ======================
    RESET
 ====================== */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-/* ======================
-   BODY
-====================== */
 body {
-    font-family: system-ui, Arial, sans-serif;
-    background: radial-gradient(circle at top, #111827, var(--bg));
-    color: var(--text);
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* ======================
    LAYOUT
 ====================== */
 .app-container {
-    display: flex;
-    min-height: 100vh;
+  display: flex;
+  min-height: 100vh;
 }
 
 /* ======================
    SIDEBAR
 ====================== */
 .sidebar {
-    width: 260px;
-    background: var(--sidebar);
-    padding: 25px;
-    border-right: 1px solid var(--border);
+  width: 260px;
+  background: var(--sidebar);
+  padding: 25px;
 }
 
 .sidebar ul {
-    list-style: none;
-    margin-top: 30px;
+  list-style: none;
+  margin-top: 30px;
 }
 
 .sidebar li {
-    padding: 14px;
-    border-radius: 12px;
-    cursor: pointer;
-    margin-bottom: 10px;
-    transition: 0.2s;
-    color: var(--muted);
+  padding: 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: 0.2s;
 }
 
-.sidebar li:hover {
-    background: #1e293b;
-    color: white;
-    transform: translateX(3px);
-}
-
+.sidebar li:hover,
 .sidebar li.active {
-    background: #1e293b;
-    color: white;
+  background: var(--card);
 }
 
 /* ======================
    MAIN
 ====================== */
 .main-content {
-    flex: 1;
-    padding: 40px;
+  flex: 1;
+  padding: 40px;
 }
 
 /* ======================
    CARDS
 ====================== */
 .card {
-    background: linear-gradient(145deg, var(--card), var(--card-2));
-    padding: 22px;
-    border-radius: 18px;
-    margin-bottom: 20px;
-    border: 1px solid var(--border);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  background: var(--card);
+  padding: 25px;
+  border-radius: 18px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
 }
 
 /* ======================
    DASHBOARD GRID
 ====================== */
 .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
 }
 
 /* ======================
-   FORMULÁRIOS
+   INPUTS
 ====================== */
 input:not([type="radio"]),
 textarea,
 button {
-    width: 100%;
-    padding: 14px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    font-size: 15px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  border: none;
 }
 
 input,
 textarea {
-    background: #0b1220;
-    color: white;
-    border: 1px solid var(--border);
-    outline: none;
+  background: var(--card-2);
+  color: white;
+  border: 1px solid var(--border);
+  outline: none;
 }
 
 textarea {
-    min-height: 180px;
-    resize: vertical;
+  min-height: 160px;
+  resize: vertical;
 }
 
 /* ======================
    BOTÕES
 ====================== */
 button {
-    background: var(--primary);
-    color: white;
-    cursor: pointer;
-    font-weight: 600;
-    border: none;
-    transition: 0.2s;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
 }
 
 button:hover {
-    background: var(--primary-2);
-    transform: translateY(-1px);
+  opacity: 0.9;
 }
 
 .btn-red {
-    background: var(--danger);
+  background: var(--danger);
 }
 
 .success-btn {
-    background: var(--success);
+  background: var(--success);
 }
 
 /* ======================
-   QUESTÕES (DUOLINGO STYLE)
+   QUESTÕES (BEM ORGANIZADAS)
 ====================== */
 .questao {
-    background: linear-gradient(145deg, #111827, #0b1220);
-    padding: 26px;
-    border-radius: 20px;
-    margin-bottom: 20px;
-    border: 1px solid var(--border);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-    transition: 0.2s;
+  background: var(--card);
+  padding: 22px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.questao:hover {
-    transform: translateY(-3px);
-}
-
-.questao p b {
-    color: var(--success);
-    font-size: 15px;
-    display: block;
-    margin-bottom: 10px;
-}
-
+/* enunciado */
+.questao h3,
 .questao p {
-    color: var(--text);
-    font-size: 16px;
-    line-height: 1.5;
-    margin-bottom: 14px;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
-/* alternativas */
+/* container alternativas */
+.alternativas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* alternativa estilo botão */
 .alternativa {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 
-    padding: 14px 16px;
-    margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
 
-    border-radius: 14px;
-    background: #0b1220;
-    border: 1px solid var(--border);
+  background: var(--card-2);
+  border: 1px solid var(--border);
 
-    cursor: pointer;
-    transition: 0.2s;
-    color: var(--muted);
+  cursor: pointer;
+  transition: 0.2s;
 }
 
 .alternativa:hover {
-    background: #111827;
-    border-color: var(--primary);
-    transform: translateX(3px);
-    color: white;
+  background: #16243a;
+  transform: translateY(-1px);
 }
 
 .alternativa input[type="radio"] {
-    transform: scale(1.2);
-    accent-color: var(--primary);
+  transform: scale(1.2);
+}
+
+.alternativa label {
+  cursor: pointer;
+  flex: 1;
 }
 
 /* ======================
-   UTILITÁRIOS
+   UTIL
 ====================== */
 .hidden {
-    display: none;
+  display: none;
 }
 
 /* ======================
    LOADING
 ====================== */
 .loading {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .spinner {
-    width: 60px;
-    height: 60px;
-    border: 6px solid #1f2937;
-    border-top: 6px solid var(--primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+  width: 60px;
+  height: 60px;
+  border: 6px solid #334155;
+  border-top: 6px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ======================
    MOBILE
 ====================== */
-#mobile-menu-btn {
-    display: none;
-}
-
 @media (max-width: 900px) {
-    #mobile-menu-btn {
-        display: block;
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        width: 60px;
-        z-index: 9999;
-    }
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    bottom: 0;
+    transition: 0.3s;
+  }
 
-    .sidebar {
-        position: fixed;
-        left: -100%;
-        top: 0;
-        bottom: 0;
-        transition: 0.3s;
-    }
+  .sidebar.open {
+    left: 0;
+  }
 
-    .sidebar.open {
-        left: 0;
-    }
-
-    .main-content {
-        padding: 90px 20px;
-    }
+  .main-content {
+    padding: 20px;
+  }
 }
 
 /* ======================
-   RANKING (DUOLINGO STYLE)
+   RANKING
 ====================== */
 .ranking-box,
 .evolucao-box {
-    background: #0f172a;
-    border-radius: 18px;
-    padding: 25px;
-    margin-top: 25px;
-    border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 18px;
+  padding: 25px;
+  margin-top: 30px;
+  border: 1px solid var(--border);
+}
+
+.ranking-header h2 {
+  margin: 0;
+}
+
+.ranking-header p {
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.ranking-top3 {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
 }
 
 .top-card {
-    flex: 1;
-    padding: 18px;
-    border-radius: 16px;
-    text-align: center;
-    font-weight: bold;
-    color: white;
+  flex: 1;
+  padding: 18px;
+  border-radius: 16px;
+  text-align: center;
+  font-weight: bold;
+  color: white;
 }
 
 .gold {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
 }
 
 .silver {
-    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
 }
 
 .bronze {
-    background: linear-gradient(135deg, #d97706, #92400e);
+  background: linear-gradient(135deg, #d97706, #92400e);
 }
 
-/* ranking list */
 .ranking-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 14px 16px;
-    background: #0b1220;
-    border-radius: 14px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border);
-    transition: 0.2s;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--card-2);
+  margin-top: 10px;
+  transition: 0.2s;
 }
 
 .ranking-item:hover {
-    transform: translateY(-2px);
-    border-color: var(--primary);
+  transform: translateY(-2px);
 }
 
 .ranking-item.me {
-    border: 2px solid var(--primary);
-    background: #0f172a;
+  border: 2px solid var(--primary);
 }
 
 /* ======================
-   XP SYSTEM
+   XP / LEVEL SYSTEM (IMPORTANTE)
 ====================== */
 .duo-dashboard {
-    background: linear-gradient(145deg, #0f172a, #0b1220);
-    padding: 20px;
-    border-radius: 18px;
-    border: 1px solid var(--border);
+  background: var(--card);
+  padding: 20px;
+  border-radius: 16px;
+  position: relative;
+  border: 1px solid var(--border);
+}
+
+.duo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.level-box {
+  text-align: center;
+  background: var(--card-2);
+  padding: 10px 16px;
+  border-radius: 12px;
+}
+
+.duo-xp {
+  margin-top: 20px;
 }
 
 .xp-bar {
-    width: 100%;
-    height: 12px;
-    background: #1f2937;
-    border-radius: 20px;
-    overflow: hidden;
-    margin-top: 10px;
+  width: 100%;
+  height: 12px;
+  background: #334155;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 10px;
 }
 
 #xp-bar-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #22c55e, #16a34a);
-    transition: width 0.8s ease;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--success), #16a34a);
+  transition: width 0.8s ease;
 }
 
 .duo-streak {
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: 14px;
-    background: #0b1220;
-    border: 1px solid var(--border);
+  margin-top: 20px;
+  padding: 10px;
+  background: var(--card-2);
+  border-radius: 12px;
 }
 
-/* XP popup */
+/* XP POPUP */
 .xp-popup {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: var(--success);
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-weight: bold;
-    animation: pop 1s ease;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--success);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: bold;
+  animation: pop 1s ease;
 }
 
 @keyframes pop {
-    0% { transform: scale(0.5); opacity: 0; }
-    50% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(1); opacity: 0; }
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
 }
 
-/* LEVEL UP */
+/* LEVEL UP ANIMATION */
 .level-up {
-    animation: levelUp 0.8s ease;
+  animation: levelUp 0.8s ease;
 }
 
 @keyframes levelUp {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.35); color: var(--gold); }
-    100% { transform: scale(1); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); color: var(--warning); }
+  100% { transform: scale(1); }
 }
 
-/* canvas */
+/* ======================
+   CANVAS CHART
+====================== */
 canvas {
-    max-height: 300px;
+  max-height: 300px;
 }
