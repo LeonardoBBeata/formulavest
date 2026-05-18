@@ -211,8 +211,65 @@ DEFAULT 'aluno'
 
   console.log('Banco OK');
 }
+async function criarAdmMaster() {
+  try {
+    const email = "adm@formulavest";
+    const senha = "158575";
 
-initDB().catch(err => {
+    const existe = await db.query(`
+      SELECT id
+      FROM usuarios
+      WHERE email = $1
+    `, [email]);
+
+    if (existe.rows.length > 0) {
+      console.log("ADM master já existe");
+      return;
+    }
+
+    const hash =
+      await bcrypt.hash(
+        senha,
+        10
+      );
+
+    await db.query(`
+      INSERT INTO usuarios(
+        username,
+        email,
+        senha,
+        role,
+        verificado
+      )
+      VALUES(
+        $1,$2,$3,$4,TRUE
+      )
+    `, [
+      "ADM",
+      email,
+      hash,
+      "empresa_admin"
+    ]);
+
+    console.log(
+      "ADM MASTER CRIADO"
+    );
+
+  } catch (err) {
+    console.error(
+      "Erro ao criar ADM:",
+      err
+    );
+  }
+}
+
+
+
+initDB()
+  .then(() =>
+    criarAdmMaster()
+  )
+  .catch(err => {
     console.error('Erro ao iniciar banco:', err);
     process.exit(1);
 });
@@ -552,76 +609,90 @@ app.post('/verificar-email', async (req, res) => {
 });
 
 
-app.post('/login-iniciar', async (req,res)=>{
-  try{
+app.post('/login-iniciar', async (req, res) => {
+  try {
     const { email, senha } = req.body;
 
-    const result = await db.query(
-      `SELECT * FROM usuarios
-       WHERE email=$1`,
-      [email]
-    );
+    const result = await db.query(`
+      SELECT *
+      FROM usuarios
+      WHERE email = $1
+    `, [email.toLowerCase()]);
 
-const user = result.rows[0];
+    const user = result.rows[0];
 
-if (!user) {
-  return res.status(404).json({
-    error: "Email não encontrado"
-  });
-}
-
-if (user.banido) {
-  return res.status(403).json({
-    error: "Usuário banido"
-  });
-}
-
-if (!user.verificado) {
-  return res.status(403).json({
-    error: "Email ainda não verificado"
-  });
-}
-
-const ok = await bcrypt.compare(
-  senha,
-  user.senha
-);
-
-    if(!ok){
-      return res.status(401).json({
-        error:'Senha incorreta'
+    // usuário não existe
+    if (!user) {
+      return res.status(404).json({
+        error: 'Email não encontrado'
       });
     }
 
-    const codigo =
-      Math.floor(
-        100000+
-        Math.random()*900000
-      ).toString();
+    // usuário banido
+    if (user.banido) {
+      return res.status(403).json({
+        error: 'Usuário banido'
+      });
+    }
+
+    // verifica senha
+    const ok = await bcrypt.compare(
+      senha,
+      user.senha
+    );
+
+    if (!ok) {
+      return res.status(401).json({
+        error: 'Senha incorreta'
+      });
+    }
+
+    // ADM MASTER -> pula código
+    if (
+      user.email.toLowerCase() ===
+      'adm@formulavest'
+    ) {
+      return res.json({
+        ok: true,
+        adminDirect: true
+      });
+    }
+
+    // gera código para usuário normal
+    const codigo = Math.floor(
+      100000 +
+      Math.random() * 900000
+    ).toString();
 
     await db.query(`
       UPDATE usuarios
-      SET codigo_verificacao=$1
-      WHERE id=$2
-    `,[codigo,user.id]);
+      SET codigo_verificacao = $1
+      WHERE id = $2
+    `, [
+      codigo,
+      user.id
+    ]);
 
     await enviarEmail(
-  email,
-  "Código de login - FórmulaVest",
-  `Seu código é: ${codigo}`
-);
+      user.email,
+      "Código de login - FórmulaVest",
+      `Seu código é: ${codigo}`
+    );
 
-    res.json({ ok:true });
+    return res.json({
+      ok: true
+    });
 
-  }catch(err){
-    console.log(err);
-    res.status(500).json({
-      error:'Erro login'
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      error: 'Erro login'
     });
   }
 });
 
-app.post("/login-confirmar", async (req, res) => {
+app.post('/login-confirmar', async (req, res) => {
   try {
     const {
       email,
@@ -632,29 +703,26 @@ app.post("/login-confirmar", async (req, res) => {
     const result = await db.query(`
       SELECT *
       FROM usuarios
-      WHERE email=$1
-    `, [email]);
+      WHERE email = $1
+    `, [email.toLowerCase()]);
 
     const user = result.rows[0];
 
+    // usuário não existe
     if (!user) {
       return res.status(404).json({
-        error: "Usuário não encontrado"
+        error: 'Usuário não encontrado'
       });
     }
 
+    // usuário banido
     if (user.banido) {
       return res.status(403).json({
-        error: "Usuário banido"
+        error: 'Usuário banido'
       });
     }
 
-    if (user.codigo_verificacao !== codigo) {
-      return res.status(400).json({
-        error: "Código inválido"
-      });
-    }
-
+    // verifica senha
     const senhaOk =
       await bcrypt.compare(
         senha,
@@ -663,20 +731,37 @@ app.post("/login-confirmar", async (req, res) => {
 
     if (!senhaOk) {
       return res.status(401).json({
-        error: "Senha incorreta"
+        error: 'Senha incorreta'
       });
     }
 
-    await db.query(`
-      UPDATE usuarios
-      SET codigo_verificacao=NULL
-      WHERE id=$1
-    `, [user.id]);
+    // só exige código se NÃO for ADM
+    if (
+      user.email.toLowerCase() !==
+      'adm@formulavest'
+    ) {
+      if (
+        user.codigo_verificacao !==
+        codigo
+      ) {
+        return res.status(400).json({
+          error: 'Código inválido'
+        });
+      }
 
+      // limpa código
+      await db.query(`
+        UPDATE usuarios
+        SET codigo_verificacao = NULL
+        WHERE id = $1
+      `, [user.id]);
+    }
+
+    // gera token
     const token =
       gerarToken(user);
 
-    res.json({
+    return res.json({
       ok: true,
       token,
       role: user.role,
@@ -691,8 +776,8 @@ app.post("/login-confirmar", async (req, res) => {
   } catch (err) {
     console.error(err);
 
-    res.status(500).json({
-      error: "Erro login"
+    return res.status(500).json({
+      error: 'Erro login'
     });
   }
 });
