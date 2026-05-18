@@ -1750,27 +1750,81 @@ app.get(
   "/me",
   auth,
   async (req, res) => {
-    const result =
-      await db.query(`
+    try {
+      const result = await db.query(
+        `
         SELECT
           id,
           username,
+          email,
+          foto,
           role,
           empresa_id,
           escola_id,
-          sala_id
+          sala_id,
+          xp,
+          nivel
         FROM usuarios
-        WHERE id=$1
-      `, [
-        req.user.id
-      ]);
+        WHERE id = $1
+        `,
+        [req.user.id]
+      );
 
-    res.json(
-      result.rows[0]
-    );
+      const user = result.rows[0];
+
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // fallback de foto padrão
+      if (!user.foto) {
+        user.foto = "default.png";
+      }
+
+      return res.json({
+        id: user.id,
+        nome: user.username, // já pronto pro frontend
+        username: user.username,
+        email: user.email,
+        foto: user.foto,
+        role: user.role,
+        empresa_id: user.empresa_id,
+        escola_id: user.escola_id,
+        sala_id: user.sala_id,
+        xp: user.xp || 0,
+        nivel: user.nivel || 1
+      });
+
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro ao buscar usuário" });
+    }
   }
 );
 
+
+app.post("/atualizar-perfil", auth, async (req, res) => {
+  const { nome, email, senha, foto } = req.body;
+
+  const user = await User.findById(req.user.id);
+
+  if (nome) user.nome = nome;
+  if (email) user.email = email;
+  if (foto) user.foto = foto;
+
+  if (senha && senha.length > 0) {
+    const bcrypt = require("bcrypt");
+    user.senha = await bcrypt.hash(senha, 10);
+  }
+
+  await user.save();
+
+  res.json({
+    nome: user.nome,
+    email: user.email,
+    foto: user.foto
+  });
+});
 // ======================
 // ADMIN STATS
 // ======================
