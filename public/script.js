@@ -18,29 +18,17 @@ window.addEventListener("DOMContentLoaded", () => {
   configurarAbas();
   configurarBotoes();
   configurarLogout();
-  configurarPerfil();
 
   carregarDashboard();
   carregarRanking();
   carregarGrafico();
-  carregarUser();
+  atualizarStreak();
 });
 
 // ======================
 // HELPERS
 // ======================
 const el = (id) => document.getElementById(id);
-
-// ======================
-// PERFIL BOLINHA
-// ======================
-function configurarPerfil() {
-  const avatar = el("avatar-mini");
-
-  avatar?.addEventListener("click", () => {
-    window.location.href = "/perfil.html";
-  });
-}
 
 // ======================
 // ABAS
@@ -76,37 +64,19 @@ function configurarBotoes() {
 // DASHBOARD
 // ======================
 async function carregarDashboard() {
-  try {
-    const res = await fetch(`${API}/dashboard`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const data = await res.json();
-
-    el("dashboard-container").innerHTML = `
-      <div class="card">
-        <p>Total de provas: ${data.provas?.length || 0}</p>
-      </div>
-    `;
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// ======================
-// USER (XP)
-// ======================
-async function carregarUser() {
-  const res = await fetch(`${API}/me`, {
+  const res = await fetch(`${API}/dashboard`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
-  const user = await res.json();
+  const data = await res.json();
 
-  el("xp-total").innerText = user.xp || 0;
-  el("nivel-user").innerText = user.nivel || 1;
-
-  el("xp-bar-fill").style.width = `${(user.xp || 0) % 100}%`;
+  el("dashboard-container").innerHTML = `
+    <div class="card">
+      <p>Total de provas: ${data.total_provas || 0}</p>
+      <p>Média de acertos: ${data.media_acertos || 0}%</p>
+      <p>Melhor score: ${data.melhor_score || 0}</p>
+    </div>
+  `;
 }
 
 // ======================
@@ -123,20 +93,18 @@ async function carregarRanking() {
 
   el("top3").innerHTML = top3.map((u, i) => `
     <div class="card">
-      <h3>${i + 1}º ${u.username}</h3>
+      <h3>${i + 1}º ${u.nome}</h3>
       <p>${u.xp} XP</p>
     </div>
   `).join("");
 
   el("ranking-list").innerHTML = data.map((u, i) => `
-    <div>
-      ${i + 1} - ${u.username} | ${u.xp} XP
-    </div>
+    <div>${i + 1} - ${u.nome} | ${u.xp} XP</div>
   `).join("");
 }
 
 // ======================
-// GRÁFICO
+// GRÁFICO SIMPLES (EVOLUÇÃO DE ACERTOS)
 // ======================
 async function carregarGrafico() {
   const res = await fetch(`${API}/grafico`, {
@@ -153,18 +121,30 @@ async function carregarGrafico() {
   grafico = new Chart(ctx, {
     type: "line",
     data: {
-      labels: Object.keys(data),
+      labels: data.provas, // ex: ["Prova 1", "Prova 2"]
       datasets: [{
-        label: "Acertos",
-        data: Object.values(data),
-        borderWidth: 2
+        label: "Acertos por prova",
+        data: data.acertos, // ex: [12, 18, 15]
+        borderWidth: 2,
+        tension: 0.3
       }]
+    },
+    options: {
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          precision: 0
+        }
+      }
     }
   });
 }
 
 // ======================
-// PROVA ENEM
+// PROVAS
 // ======================
 async function gerarEnem() {
   const res = await fetch(`${API}/gerar-enem`, {
@@ -178,12 +158,9 @@ async function gerarEnem() {
   provaId = data.prova_id;
   respostasUser = {};
 
-  renderProva(questoes, "enem-container", "finalizar-enem-btn");
+  renderProva(data.questoes, "enem-container", "finalizar-enem-btn");
 }
 
-// ======================
-// PROVA PROVÃO
-// ======================
 async function gerarProvao() {
   const res = await fetch(`${API}/gerar-provao`, {
     method: "POST",
@@ -196,13 +173,13 @@ async function gerarProvao() {
   provaId = data.prova_id;
   respostasUser = {};
 
-  renderProva(questoes, "provao-container", "finalizar-provao-btn");
+  renderProva(data.questoes, "provao-container", "finalizar-provao-btn");
 }
 
 // ======================
 // RENDER PROVA
 // ======================
-function renderProva(lista, containerId, btnId) {
+function renderProva(lista, containerId, btnFinalizar) {
   const container = el(containerId);
   container.innerHTML = "";
 
@@ -220,7 +197,7 @@ function renderProva(lista, containerId, btnId) {
     `;
   });
 
-  el(btnId)?.classList.remove("hidden");
+  el(btnFinalizar)?.classList.remove("hidden");
 }
 
 // ======================
@@ -240,7 +217,7 @@ function selecionar(index, letra, elClicked) {
 }
 
 // ======================
-// SALVAR
+// SALVAR RESULTADO
 // ======================
 async function salvarResultado() {
   const respostas = questoes.map((q, i) => ({
@@ -291,6 +268,14 @@ async function corrigirRedacao() {
 
   el("feedback-redacao").innerText =
     `Nota: ${data.nota_total}\n${data.feedback}`;
+}
+
+// ======================
+// STREAK
+// ======================
+function atualizarStreak() {
+  const streak = Number(localStorage.getItem("streak") || 0);
+  el("streak-days").innerText = `${streak} dias 🔥`;
 }
 
 // ======================
