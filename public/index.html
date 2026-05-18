@@ -28,7 +28,7 @@
       <li data-section="provao">Provão Paulista</li>
       <li data-section="dashboard">Dashboard</li>
       <li data-section="ranking">Ranking</li>
-      <li data-section="perfil">Perfil</li>
+      <li data-section="perfil" onclick="abrirPerfil()">Perfil</li>
       <li data-section="redacao">Redação</li>
     </ul>
 
@@ -100,11 +100,10 @@
       <div id="ranking-list"></div>
     </section>
 
-    <!-- PERFIL -->
+    <!-- PERFIL (tela opcional) -->
     <section id="perfil" class="section hidden">
       <h1>👤 Perfil</h1>
-
-      <div id="perfil-container"></div>
+      <p>Clique em "Perfil" na sidebar para editar.</p>
     </section>
 
     <!-- REDAÇÃO -->
@@ -127,9 +126,32 @@
   <div>
     <h1>Resultado</h1>
     <p id="final-text"></p>
+
     <button onclick="document.getElementById('final-screen').classList.add('hidden')">
       Fechar
     </button>
+  </div>
+</div>
+
+<!-- PERFIL MODAL -->
+<div id="profile-modal" class="hidden">
+  <div class="profile-box">
+
+    <h2>Perfil</h2>
+
+    <img id="profile-avatar" src="default.png" width="80">
+
+    <input type="file" id="foto-input">
+
+    <input id="nome-input" placeholder="Nome">
+    <input id="email-input" placeholder="Email">
+    <input id="senha-input" type="password" placeholder="Nova senha">
+
+    <img id="profile-preview" src="default.png" width="80">
+
+    <button onclick="salvarPerfil()">Salvar</button>
+    <button onclick="fecharPerfil()">Fechar</button>
+
   </div>
 </div>
 
