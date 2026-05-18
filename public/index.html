@@ -14,6 +14,11 @@
 
 <body>
 
+<!-- TIMER FIXO -->
+<div id="timer-bar">
+  ⏱ Tempo restante: <span id="timer">00:00:00</span>
+</div>
+
 <div class="app-container">
 
   <!-- SIDEBAR -->
@@ -74,35 +79,32 @@
       <div id="dashboard-container"></div>
 
       <div class="duo-dashboard">
+        <div class="duo-header">
+          <h2>🔥 Seu progresso</h2>
+          <div class="level-box">
+            <span>Nível</span>
+            <h1 id="nivel-user">1</h1>
+          </div>
+        </div>
 
-  <div class="duo-header">
-    <h2>🔥 Seu progresso</h2>
+        <div class="duo-xp">
+          <p>XP Total</p>
+          <h2 id="xp-total">0</h2>
 
-    <div class="level-box">
-      <span>Nível</span>
-      <h1 id="nivel-user">1</h1>
-    </div>
-  </div>
+          <div class="xp-bar">
+            <div id="xp-bar-fill"></div>
+          </div>
 
-  <div class="duo-xp">
-    <p>XP Total</p>
-    <h2 id="xp-total">0</h2>
+          <small id="xp-next"></small>
+        </div>
 
-    <div class="xp-bar">
-      <div id="xp-bar-fill"></div>
-    </div>
+        <div class="duo-streak">
+          <h3>🔥 Streak</h3>
+          <p id="streak-days">0 dias seguidos</p>
+        </div>
 
-    <small id="xp-next">Falta 100 XP para o próximo nível</small>
-  </div>
-
-  <div class="duo-streak">
-    <h3>🔥 Streak</h3>
-    <p id="streak-days">0 dias seguidos</p>
-  </div>
-
-  <div id="xp-popup" class="xp-popup hidden">+0 XP</div>
-
-</div>
+        <div id="xp-popup" class="xp-popup hidden">+0 XP</div>
+      </div>
 
       <div class="evolucao-box">
         <h2>📈 Evolução XP</h2>
@@ -115,7 +117,7 @@
       <h1>🏆 Ranking Geral</h1>
 
       <div class="ranking-box">
-        <div id="top3"></div>
+        <div id="top3" class="ranking-top3"></div>
         <div id="ranking-list"></div>
       </div>
     </section>
@@ -136,7 +138,6 @@
       <h1>✍️ Redação ENEM</h1>
 
       <input id="tema-redacao" placeholder="Tema da redação">
-
       <textarea id="texto-redacao" placeholder="Digite sua redação..."></textarea>
 
       <button id="enviar-redacao">Corrigir redação</button>
@@ -145,6 +146,15 @@
     </section>
 
   </main>
+</div>
+
+<!-- TELA FINAL -->
+<div id="final-screen" class="final-screen hidden">
+  <div class="final-box">
+    <h1>📊 Resultado da Prova</h1>
+    <p id="final-text"></p>
+    <button onclick="location.reload()">Voltar</button>
+  </div>
 </div>
 
 </body>
