@@ -15,6 +15,12 @@ const PDFDocument = require('pdfkit');
 const validator = require('validator');
 const { Pool } = require('pg');
 
+const fs = require("fs");
+
+if (!fs.existsSync("public/uploads")) {
+  fs.mkdirSync("public/uploads", { recursive: true });
+}
+
 const multer = require("multer");
 const path = require("path");
 
@@ -26,6 +32,21 @@ const storage = multer.diskStorage({
     const ext = path.extname(file.originalname);
     const name = req.user.id + "-" + Date.now() + ext;
     cb(null, name);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (!file.mimetype.startsWith("image/")) {
+    return cb(new Error("Apenas imagens são permitidas"), false);
+  }
+  cb(null, true);
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB
   }
 });
 
@@ -127,6 +148,10 @@ async function initDB() {
       criado_em TIMESTAMP DEFAULT NOW()
     )
   `);
+  await db.query(`
+  ALTER TABLE usuarios
+  ADD COLUMN IF NOT EXISTS foto TEXT
+`);
 
 
 await db.query(`
@@ -328,31 +353,6 @@ function mesmaEmpresa(req, usuarioEmpresaId) {
 }
 
 
-//foto
-app.post("/upload-foto", auth, upload.single("foto"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "Nenhuma imagem enviada" });
-    }
-
-    const fotoUrl = `/uploads/${req.file.filename}`;
-
-    await db.query(`
-      UPDATE usuarios
-      SET foto = $1
-      WHERE id = $2
-    `, [fotoUrl, req.user.id]);
-
-    res.json({
-      ok: true,
-      foto: fotoUrl
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro upload foto" });
-  }
-});
 
 // ======================
 // JWT
@@ -1819,9 +1819,9 @@ app.get(
       }
 
       // fallback de foto padrão
-      if (!user.foto) {
-        user.foto = "default.png";
-      }
+if (!user.foto) {
+  user.foto = "/default.png";
+}
 
       return res.json({
         id: user.id,
@@ -1844,6 +1844,31 @@ app.get(
   }
 );
 
+
+app.post("/upload-foto", auth, upload.single("foto"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhuma imagem enviada" });
+    }
+
+    const fotoUrl = `/uploads/${req.file.filename}`;
+
+    await db.query(`
+      UPDATE usuarios
+      SET foto = $1
+      WHERE id = $2
+    `, [fotoUrl, req.user.id]);
+
+    return res.json({
+      ok: true,
+      foto: fotoUrl
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Erro upload foto" });
+  }
+});
 
 app.put("/atualizar-perfil", auth, async (req, res) => {
   try {
