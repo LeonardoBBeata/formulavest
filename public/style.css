@@ -383,3 +383,78 @@ button:hover {
 canvas{
   max-height:300px;
 }
+
+.duo-dashboard{
+  background:#0f172a;
+  padding:20px;
+  border-radius:16px;
+  color:white;
+  position:relative;
+}
+
+.duo-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.level-box{
+  text-align:center;
+  background:#1e293b;
+  padding:10px 16px;
+  border-radius:12px;
+}
+
+.duo-xp{
+  margin-top:20px;
+}
+
+.xp-bar{
+  width:100%;
+  height:12px;
+  background:#334155;
+  border-radius:20px;
+  overflow:hidden;
+  margin-top:10px;
+}
+
+#xp-bar-fill{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#22c55e,#16a34a);
+  transition:width 1s ease;
+}
+
+.duo-streak{
+  margin-top:20px;
+  padding:10px;
+  background:#1e293b;
+  border-radius:12px;
+}
+
+.xp-popup{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#22c55e;
+  padding:10px 14px;
+  border-radius:12px;
+  font-weight:bold;
+  animation:pop 1s ease;
+}
+
+@keyframes pop{
+  0%{transform:scale(0.5);opacity:0;}
+  50%{transform:scale(1.2);opacity:1;}
+  100%{transform:scale(1);opacity:0;}
+}
+
+.level-up{
+  animation:levelUp 0.8s ease;
+}
+
+@keyframes levelUp{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.3);color:#facc15;}
+  100%{transform:scale(1);}
+}
