@@ -1,33 +1,168 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Painel</title>
-<link rel="stylesheet" href="admin.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FórmulaVest • Painel Administrativo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-white p-6">
+      <h1 class="text-2xl font-bold mb-8">FórmulaVest</h1>
+      <nav class="space-y-3">
+        <button onclick="mostrar('dashboard')" class="w-full text-left p-2 rounded hover:bg-slate-800">Dashboard</button>
+        <button onclick="mostrar('usuarios')" class="w-full text-left p-2 rounded hover:bg-slate-800">Usuários</button>
+        <button onclick="mostrar('provas')" class="w-full text-left p-2 rounded hover:bg-slate-800">Provas</button>
+        <button onclick="mostrar('estrutura')" class="w-full text-left p-2 rounded hover:bg-slate-800">Escolas & Salas</button>
+        <button onclick="logout()" class="w-full text-left p-2 rounded bg-red-600 hover:bg-red-700 mt-8">Sair</button>
+      </nav>
+    </aside>
 
-<div class="box">
-  <h1>Admin</h1>
+    <!-- Main -->
+    <main class="flex-1 p-8">
+      <section id="dashboard" class="pagina">
+        <h2 class="text-3xl font-bold mb-6">Dashboard</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-white rounded-2xl shadow p-6"><p>Total usuários</p><h3 id="totalUsuarios" class="text-3xl font-bold">...</h3></div>
+          <div class="bg-white rounded-2xl shadow p-6"><p>Total provas</p><h3 id="totalProvas" class="text-3xl font-bold">...</h3></div>
+          <div class="bg-white rounded-2xl shadow p-6"><p>Média acertos</p><h3 id="media" class="text-3xl font-bold">...</h3></div>
+        </div>
+      </section>
 
-  <input
-    id="email"
-    placeholder="Email"
-  >
+      <section id="usuarios" class="pagina hidden">
+        <h2 class="text-3xl font-bold mb-6">Gerenciar Usuários</h2>
+        <div class="bg-white rounded-2xl shadow p-4 mb-4">
+          <input id="novoNome" class="border p-2 mr-2" placeholder="Usuário">
+          <input id="novoEmail" class="border p-2 mr-2" placeholder="Email">
+          <input id="novaSenha" class="border p-2 mr-2" placeholder="Senha">
+          <select id="novoRole" class="border p-2 mr-2">
+            <option value="aluno">Aluno</option>
+            <option value="professor">Professor</option>
+            <option value="coordenador">Coordenador</option>
+          </select>
+          <button onclick="criarUsuario()" class="bg-blue-600 text-white px-4 py-2 rounded">Criar</button>
+        </div>
+        <div id="listaUsuarios" class="space-y-2"></div>
+      </section>
 
-  <input
-    id="senha"
-    type="password"
-    placeholder="Senha"
-  >
+      <section id="provas" class="pagina hidden">
+        <h2 class="text-3xl font-bold mb-6">Histórico de Provas</h2>
+        <div id="listaProvas" class="space-y-2"></div>
+      </section>
 
-  <button id="login-btn">
-    Entrar
-  </button>
+      <section id="estrutura" class="pagina hidden">
+        <h2 class="text-3xl font-bold mb-6">Estrutura Escolar</h2>
+        <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+          <input id="nomeEscola" class="border p-2" placeholder="Nova escola">
+          <button onclick="criarEscola()" class="bg-green-600 text-white px-4 py-2 rounded">Criar escola</button>
+        </div>
+      </section>
+    </main>
+  </div>
 
-  <p id="msg"></p>
-</div>
+<script>
+const API = 'https://formulavest.onrender.com';
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login.html';
 
-<script src="admin.js"></script>
+function authHeaders(){
+  return {
+    'Content-Type':'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+}
+
+function mostrar(id){
+  document.querySelectorAll('.pagina').forEach(p=>p.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function logout(){
+  localStorage.removeItem('token');
+  location.href='/login.html';
+}
+
+async function verificarAdmin(){
+  const res = await fetch(`${API}/admin-check`, { headers: authHeaders() });
+  if(!res.ok){
+    alert('Sem permissão');
+    logout();
+  }
+}
+
+async function carregarStats(){
+  const res = await fetch(`${API}/admin/stats`, { headers: authHeaders() });
+  const data = await res.json();
+  document.getElementById('totalProvas').textContent = data.totalProvas;
+  document.getElementById('media').textContent = data.media;
+}
+
+async function carregarUsuarios(){
+  const res = await fetch(`${API}/admin/usuarios`, { headers: authHeaders() });
+  const data = await res.json();
+  document.getElementById('totalUsuarios').textContent = data.usuarios.length;
+  const box = document.getElementById('listaUsuarios');
+  box.innerHTML = data.usuarios.map(u => `
+    <div class='bg-white p-4 rounded shadow flex justify-between'>
+      <span>${u.username} (${u.role}) ${u.banido ? '🚫' : ''}</span>
+      <div>
+        <button onclick='banir(${u.id})' class='bg-yellow-500 text-white px-3 py-1 rounded'>Banir/Desbanir</button>
+        <button onclick='excluir(${u.id})' class='bg-red-600 text-white px-3 py-1 rounded'>Excluir</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function criarUsuario(){
+  await fetch(`${API}/admin/criar-usuario`, {
+    method:'POST', headers: authHeaders(),
+    body: JSON.stringify({
+      username: novoNome.value,
+      email: novoEmail.value,
+      senha: novaSenha.value,
+      role: novoRole.value
+    })
+  });
+  carregarUsuarios();
+}
+
+async function banir(id){
+  await fetch(`${API}/admin/usuario/${id}/banir`, {
+    method:'PUT', headers: authHeaders()
+  });
+  carregarUsuarios();
+}
+
+async function excluir(id){
+  if(!confirm('Excluir usuário?')) return;
+  await fetch(`${API}/admin/usuario/${id}`, {
+    method:'DELETE', headers: authHeaders()
+  });
+  carregarUsuarios();
+}
+
+async function carregarProvas(){
+  const res = await fetch(`${API}/admin/provas`, { headers: authHeaders() });
+  const data = await res.json();
+  document.getElementById('listaProvas').innerHTML = data.provas.map(p => `
+    <div class='bg-white p-4 rounded shadow'>${p.username} — ${p.acertos}/${p.total} (${p.percentual.toFixed(1)}%)</div>
+  `).join('');
+}
+
+async function criarEscola(){
+  await fetch(`${API}/admin/criar-escola`, {
+    method:'POST', headers: authHeaders(),
+    body: JSON.stringify({ nome: nomeEscola.value })
+  });
+  alert('Escola criada');
+}
+
+verificarAdmin();
+carregarStats();
+carregarUsuarios();
+carregarProvas();
+</script>
 </body>
 </html>
