@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>FórmulaVest Master</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<div class="flex min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside class="w-64 bg-slate-900 text-white p-6">
+    <h1 class="text-2xl font-bold mb-8">
+      FórmulaVest Master
+    </h1>
+
+    <nav class="space-y-3">
+      <button
+        onclick="mostrar('dashboard')"
+        class="w-full text-left p-3 rounded hover:bg-slate-800"
+      >
+        Dashboard
+      </button>
+
+      <button
+        onclick="mostrar('empresas')"
+        class="w-full text-left p-3 rounded hover:bg-slate-800"
+      >
+        Empresas
+      </button>
+
+      <button
+        onclick="mostrar('admins')"
+        class="w-full text-left p-3 rounded hover:bg-slate-800"
+      >
+        Admins
+      </button>
+
+      <button
+        onclick="logout()"
+        class="w-full text-left p-3 rounded bg-red-600 hover:bg-red-700 mt-8"
+      >
+        Sair
+      </button>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 p-8">
+
+    <!-- DASHBOARD -->
+    <section
+      id="dashboard"
+      class="pagina"
+    >
+      <h2 class="text-3xl font-bold mb-6">
+        Dashboard Geral
+      </h2>
+
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white p-6 rounded-2xl shadow">
+          <p>Total Empresas</p>
+          <h3
+            id="totalEmpresas"
+            class="text-3xl font-bold"
+          >
+            ...
+          </h3>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow">
+          <p>Total Usuários</p>
+          <h3
+            id="totalUsuarios"
+            class="text-3xl font-bold"
+          >
+            ...
+          </h3>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow">
+          <p>Total Provas</p>
+          <h3
+            id="totalProvas"
+            class="text-3xl font-bold"
+          >
+            ...
+          </h3>
+        </div>
+      </div>
+    </section>
+
+    <!-- EMPRESAS -->
+    <section
+      id="empresas"
+      class="pagina hidden"
+    >
+      <h2 class="text-3xl font-bold mb-6">
+        Empresas
+      </h2>
+
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <input
+          id="empresaNome"
+          placeholder="Nome da empresa"
+          class="border p-2 mr-2"
+        >
+
+        <button
+          onclick="criarEmpresa()"
+          class="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Criar
+        </button>
+      </div>
+
+      <div
+        id="listaEmpresas"
+        class="space-y-3"
+      ></div>
+    </section>
+
+    <!-- ADMINS -->
+    <section
+      id="admins"
+      class="pagina hidden"
+    >
+      <h2 class="text-3xl font-bold mb-6">
+        Criar Empresa Admin
+      </h2>
+
+      <div class="bg-white p-4 rounded shadow space-y-3">
+
+        <input
+          id="adminNome"
+          placeholder="Nome"
+          class="border p-2 w-full"
+        >
+
+        <input
+          id="adminEmail"
+          placeholder="Email"
+          class="border p-2 w-full"
+        >
+
+        <input
+          id="adminSenha"
+          placeholder="Senha"
+          class="border p-2 w-full"
+        >
+
+        <input
+          id="adminEmpresaId"
+          placeholder="ID da empresa"
+          class="border p-2 w-full"
+        >
+
+        <button
+          onclick="criarEmpresaAdmin()"
+          class="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          Criar Admin
+        </button>
+
+      </div>
+    </section>
+
+  </main>
+
+</div>
+
+<script src="admin_formulavest.js"></script>
+</body>
+</html>
