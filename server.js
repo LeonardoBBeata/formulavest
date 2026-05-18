@@ -2731,49 +2731,30 @@ app.get(
 // ======================
 // RANKING
 // ======================
-app.get('/ranking', auth, async (req, res) => {
-  try {
-    const result = await db.query(`
-      SELECT username, xp, nivel
-      FROM usuarios
-      ORDER BY xp DESC
-      LIMIT 50
-    `);
-
-    res.json({ ranking: result.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro ranking' });
-  }
-});
-
-app.get("/perfil", auth, async (req, res) => {
-  const userId = req.user.id;
-
-  const user = await db.query(`
+app.get("/ranking", auth, async (req, res) => {
+  let query = `
     SELECT username, xp, nivel
     FROM usuarios
-    WHERE id = $1
-  `, [userId]);
+  `;
 
-  const provas = await db.query(`
-    SELECT COUNT(*) FROM provas
-    WHERE usuario_id = $1
-  `, [userId]);
+  const params = [];
 
-  const media = await db.query(`
-    SELECT COALESCE(AVG(percentual),0) as media
-    FROM provas
-    WHERE usuario_id = $1
-  `, [userId]);
+  if (req.user.role !== "formulavest_master") {
+    query += ` WHERE empresa_id = $1 `;
+    params.push(req.user.empresa_id);
+  }
 
-  res.json({
-    ...user.rows[0],
-    total_provas: Number(provas.rows[0].count),
-    media: Number(media.rows[0].media)
-  });
+  if (req.user.escola_id) {
+    query += ` AND escola_id = $2 `;
+    params.push(req.user.escola_id);
+  }
+
+  query += ` ORDER BY xp DESC LIMIT 50`;
+
+  const result = await db.query(query, params);
+
+  res.json({ ranking: result.rows });
 });
-
 
 app.get("/exportar-pdf", auth, async (req, res) => {
   const result = await db.query(`
@@ -2815,21 +2796,29 @@ app.post('/corrigir-redacao', auth, async (req, res) => {
   try {
     const { tema, texto } = req.body;
 
-    const prompt = `
-Corrija esta redação ENEM.
+const prompt = `
+Corrija esta redação ENEM seguindo as 5 competências:
+
+Competência 1: norma padrão
+Competência 2: compreensão do tema
+Competência 3: argumentação
+Competência 4: coesão
+Competência 5: proposta de intervenção
+
 Tema: ${tema}
 Texto: ${texto}
 
-Retorne JSON:
+RETORNE JSON:
 {
- "competencia1":0,
- "competencia2":0,
- "competencia3":0,
- "competencia4":0,
- "competencia5":0,
- "nota_total":0,
+ "competencia1":0-200,
+ "competencia2":0-200,
+ "competencia3":0-200,
+ "competencia4":0-200,
+ "competencia5":0-200,
+ "nota_total":0-1000,
  "feedback":""
-}`;
+}
+`;;
 
     const resposta = await chamarIA(prompt);
     const json = extrairJSONSeguro(resposta);
@@ -2848,42 +2837,57 @@ Retorne JSON:
 // ======================
 // PDF PROTEGIDO
 // ======================
-app.get('/pdf/:id', auth, async (req, res) => {
-  try {
-    const provaId = req.params.id;
+app.get("/pdf-enem/:id", auth, async (req, res) => {
+  const provaId = req.params.id;
 
-    const result = await db.query(`
-      SELECT * FROM provas
-      WHERE id = $1 AND usuario_id = $2
-    `, [provaId, req.user.id]);
+  const result = await db.query(`
+    SELECT * FROM provas
+    WHERE id = $1 AND usuario_id = $2
+  `, [provaId, req.user.id]);
 
-    const prova = result.rows[0];
+  const prova = result.rows[0];
 
-    if (!prova) {
-      return res.status(404).send('Prova não encontrada');
-    }
-
-    const doc = new PDFDocument();
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `inline; filename=prova-${prova.id}.pdf`
-    );
-
-    doc.pipe(res);
-
-    doc.fontSize(22).text('Simulado ENEM', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(14).text(`Acertos: ${prova.acertos}`);
-    doc.text(`Total: ${prova.total}`);
-    doc.text(`Percentual: ${prova.percentual.toFixed(1)}%`);
-
-    doc.end();
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Erro PDF');
+  if (!prova) {
+    return res.status(404).send("Prova não encontrada");
   }
+
+  const doc = new PDFDocument({ margin: 30 });
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename=enem-${prova.id}.pdf`
+  );
+
+  doc.pipe(res);
+
+  doc.fontSize(20).text("FórmulaVest - Simulado ENEM", { align: "center" });
+  doc.moveDown();
+
+  doc.fontSize(12).text(`Acertos: ${prova.acertos}/${prova.total}`);
+  doc.text(`Percentual: ${prova.percentual.toFixed(1)}%`);
+  doc.moveDown();
+
+  prova.questoes.forEach((q, i) => {
+    doc.fontSize(14).text(`Questão ${i + 1}`);
+    doc.fontSize(12).text(q.enunciado);
+    doc.moveDown(0.5);
+
+    Object.entries(q.opcoes).forEach(([k, v]) => {
+      doc.text(`${k}) ${v}`);
+    });
+
+    doc.moveDown(0.5);
+    doc.text(`Sua resposta: ${q.selecionada || "Não respondida"}`);
+    doc.text(`Correta: ${q.correta}`);
+
+    doc.moveDown();
+
+    doc.text("━━━━━━━━━━━━━━━━━━━━━━");
+    doc.moveDown();
+  });
+
+  doc.end();
 });
 
 // ======================
