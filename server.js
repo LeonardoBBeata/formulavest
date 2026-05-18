@@ -640,33 +640,43 @@ app.post("/login-confirmar", async (req, res) => {
       });
     }
 
-    if (
-      user.codigo_verificacao !== codigo
-    ) {
+    if (user.codigo_verificacao !== codigo) {
       return res.status(400).json({
         error: "Código inválido"
       });
     }
 
-    const ok = await bcrypt.compare(
-      senha,
-      user.senha
-    );
+    const senhaOk =
+      await bcrypt.compare(
+        senha,
+        user.senha
+      );
 
-    if (!ok) {
+    if (!senhaOk) {
       return res.status(401).json({
         error: "Senha incorreta"
       });
     }
 
-    const token = gerarToken(user);
+    await db.query(`
+      UPDATE usuarios
+      SET codigo_verificacao=NULL
+      WHERE id=$1
+    `, [user.id]);
+
+    const token =
+      gerarToken(user);
 
     res.json({
       ok: true,
       token,
       role: user.role,
-      empresa_id: user.empresa_id,
-      escola_id: user.escola_id
+      empresa_id:
+        user.empresa_id,
+      escola_id:
+        user.escola_id,
+      sala_id:
+        user.sala_id
     });
 
   } catch (err) {
@@ -788,49 +798,16 @@ app.post(
 
 
 // ======================
-// ADMIN LOGIN DIRETO
-// ======================
-app.post(
-  '/admin-login',
-  (req, res) => {
-    const {
-      email,
-      senha
-    } = req.body;
-
-    if (
-      email ===
-        process.env.ADMIN_EMAIL &&
-      senha ===
-        process.env.ADMIN_PASSWORD
-    ) {
-      res.cookie(
-        'admin',
-        'true',
-        {
-          httpOnly: true,
-          sameSite: 'lax'
-        }
-      );
-
-      return res.json({
-        ok: true
-      });
-    }
-
-    res.status(401).json({
-      error:
-        'Credenciais inválidas'
-    });
-  }
-);
-
-// ======================
 // ADMIN CHECK
 // ======================
 app.get(
-  '/admin-check',
-  adminAuth,
+  "/admin-check",
+  auth,
+  permitir(
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
   (_, res) => {
     res.json({
       ok: true
@@ -838,42 +815,56 @@ app.get(
   }
 );
 
-// ======================
-// ADMIN LOGOUT
-// ======================
-app.post(
-  '/logout',
-  (req, res) => {
-    res.clearCookie(
-      'admin'
-    );
-
-    res.json({
-      ok: true
-    });
-  }
-);
 
 // ======================
 // ADMIN PROVAS
 // ======================
 app.get(
-  '/admin/provas',
-  adminAuth,
-  async (_, res) => {
+  "/admin/provas",
+  auth,
+  permitir(
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
+  async (req, res) => {
     try {
-      const result =
-        await db.query(`
+
+      let result;
+
+      if (
+        req.user.role ===
+        "empresa_admin"
+      ) {
+        result = await db.query(`
           SELECT
             p.*,
             u.username
           FROM provas p
           JOIN usuarios u
-          ON u.id =
-          p.usuario_id
-          ORDER BY
-          p.id DESC
-        `);
+          ON u.id=p.usuario_id
+          WHERE
+            u.empresa_id=$1
+          ORDER BY p.id DESC
+        `, [
+          req.user.empresa_id
+        ]);
+
+      } else {
+        result = await db.query(`
+          SELECT
+            p.*,
+            u.username
+          FROM provas p
+          JOIN usuarios u
+          ON u.id=p.usuario_id
+          WHERE
+            u.escola_id=$1
+          ORDER BY p.id DESC
+        `, [
+          req.user.escola_id
+        ]);
+      }
 
       res.json({
         provas:
@@ -885,7 +876,123 @@ app.get(
 
       res.status(500).json({
         error:
-          'Erro provas'
+          "Erro provas"
+      });
+    }
+  }
+);
+
+
+
+//empresas
+app.post(
+  "/admin/criar-empresa",
+  auth,
+  permitir("empresa_admin"),
+  async (req, res) => {
+    try {
+      const {
+        nome
+      } = req.body;
+
+      await db.query(`
+        INSERT INTO empresas(
+          nome
+        )
+        VALUES($1)
+      `, [nome]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro criar empresa"
+      });
+    }
+  }
+);
+
+//escolas
+app.post(
+  "/admin/criar-escola",
+  auth,
+  permitir(
+    "empresa_admin"
+  ),
+  async (req, res) => {
+    try {
+      const {
+        nome
+      } = req.body;
+
+      await db.query(`
+        INSERT INTO escolas(
+          empresa_id,
+          nome
+        )
+        VALUES($1,$2)
+      `, [
+        req.user.empresa_id,
+        nome
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro criar escola"
+      });
+    }
+  }
+);
+
+
+//salas
+app.post(
+  "/admin/criar-sala",
+  auth,
+  permitir(
+    "diretor",
+    "coordenador"
+  ),
+  async (req, res) => {
+    try {
+      const {
+        nome,
+        periodo_id
+      } = req.body;
+
+      await db.query(`
+        INSERT INTO salas(
+          periodo_id,
+          nome
+        )
+        VALUES($1,$2)
+      `, [
+        periodo_id,
+        nome
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro criar sala"
       });
     }
   }
@@ -972,7 +1079,7 @@ app.get(
 app.post(
   "/admin/criar-usuario",
   auth,
-  permit(
+  permitir(
     "empresa_admin",
     "diretor",
     "coordenador"
@@ -1224,20 +1331,49 @@ app.get(
 // ADMIN STATS
 // ======================
 app.get(
-  '/admin/stats',
-  adminAuth,
-  async (_, res) => {
+  "/admin/stats",
+  auth,
+  permitir(
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
+  async (req, res) => {
     try {
-      const result =
-        await db.query(`
+
+      let result;
+
+      if (
+        req.user.role ===
+        "empresa_admin"
+      ) {
+        result = await db.query(`
           SELECT
             u.username,
             p.acertos
           FROM provas p
           JOIN usuarios u
-          ON u.id =
-          p.usuario_id
-        `);
+          ON u.id=p.usuario_id
+          WHERE
+            u.empresa_id=$1
+        `, [
+          req.user.empresa_id
+        ]);
+
+      } else {
+        result = await db.query(`
+          SELECT
+            u.username,
+            p.acertos
+          FROM provas p
+          JOIN usuarios u
+          ON u.id=p.usuario_id
+          WHERE
+            u.escola_id=$1
+        `, [
+          req.user.escola_id
+        ]);
+      }
 
       const provas =
         result.rows;
@@ -1246,6 +1382,7 @@ app.get(
         provas.length;
 
       let soma = 0;
+
       const ranking = {};
 
       provas.forEach(
@@ -1258,8 +1395,8 @@ app.get(
           ] =
             (ranking[
               p.username
-            ] || 0) +
-            p.acertos;
+            ] || 0)
+            + p.acertos;
         }
       );
 
@@ -1289,7 +1426,7 @@ app.get(
 
       res.status(500).json({
         error:
-          'Erro stats'
+          "Erro stats"
       });
     }
   }
