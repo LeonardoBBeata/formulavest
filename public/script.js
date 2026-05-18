@@ -193,30 +193,34 @@ function renderProva(
       containerId
     );
 
-container.innerHTML += `
-  <div class="questao">
-    <p class="numero-questao">
-      Questão: ${i + 1}
-    </p>
+  container.innerHTML = "";
 
-    <p class="enunciado">
-      ${q.enunciado}
-    </p>
+  lista.forEach((q, i) => {
+    container.innerHTML += `
+      <div class="questao">
+        <p class="numero-questao">
+          Questão: ${i + 1}
+        </p>
 
-    ${Object.entries(q.opcoes)
-      .map(([letra, texto]) => `
-        <label class="alternativa">
-          <input
-            type="radio"
-            name="q${i}"
-            value="${letra}"
-          >
-          ${texto}
-        </label>
-      `)
-      .join("")}
-  </div>
-`;
+        <p class="enunciado">
+          ${q.enunciado}
+        </p>
+
+        ${Object.entries(q.opcoes)
+          .map(([letra, texto]) => `
+            <label class="alternativa">
+              <input
+                type="radio"
+                name="q${i}"
+                value="${letra}"
+              >
+              ${texto}
+            </label>
+          `)
+          .join("")}
+      </div>
+    `;
+  });
 
   document
     .getElementById(
