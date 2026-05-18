@@ -120,6 +120,52 @@ document
       return;
     }
 
+    // ADM entra direto
+    if (
+      data.adminDirect
+    ) {
+      const res2 =
+        await fetch(
+          `${API}/login-confirmar`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+            body:
+              JSON.stringify({
+                email:
+                  loginEmail,
+                senha:
+                  loginSenha,
+                codigo: ""
+              })
+          }
+        );
+
+      const data2 =
+        await res2.json();
+
+      if (!res2.ok) {
+        alert(
+          data2.error
+        );
+        return;
+      }
+
+      localStorage.setItem(
+        "token",
+        data2.token
+      );
+
+      location.href =
+        "/admin_formulavest.html";
+
+      return;
+    }
+
+    // usuário normal
     mostrar(
       "codigo-login-box"
     );
@@ -185,6 +231,13 @@ document
 
       if (
         data.role ===
+        "formulavest_master"
+      ) {
+        location.href =
+          "/admin_formulavest.html";
+
+      } else if (
+        data.role ===
         "empresa_admin"
       ) {
         location.href =
@@ -226,6 +279,7 @@ document
       ) {
         location.href =
           "/professor.html";
+
       } else {
         location.href =
           "/index.html";
