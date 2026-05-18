@@ -1,3 +1,4 @@
+app.set("trust proxy", 1);
 require('dotenv').config();
 
 const crypto = require('crypto');
