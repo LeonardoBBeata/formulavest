@@ -3,8 +3,8 @@ const API =
 
 let loginEmail = "";
 let loginSenha = "";
-
 let cadastroEmail = "";
+let tipoLogin = "aluno";
 
 function mostrar(id) {
   document
@@ -75,6 +75,12 @@ document
     "login-btn"
   )
   .onclick = async () => {
+
+    tipoLogin =
+      document.querySelector(
+        'input[name="tipo-login"]:checked'
+      ).value;
+
     loginEmail =
       document.getElementById(
         "login-email"
@@ -128,6 +134,7 @@ document
     "confirmar-login-btn"
   )
   .onclick = async () => {
+
     const codigo =
       document.getElementById(
         "codigo-login"
@@ -163,45 +170,67 @@ document
       return;
     }
 
-    // salva token
     localStorage.setItem(
       "token",
       data.token
     );
 
-    // redireciona por cargo
+    // ======================
+    // REDIRECIONAMENTO
+    // ======================
+
     if (
-      data.role ===
-      "empresa_admin"
+      tipoLogin === "admin"
     ) {
-      location.href =
-        "/admin_empresa.html";
 
-    } else if (
-      data.role ===
-      "diretor"
-    ) {
-      location.href =
-        "/admin_diretor.html";
+      if (
+        data.role ===
+        "empresa_admin"
+      ) {
+        location.href =
+          "/admin_empresa.html";
 
-    } else if (
-      data.role ===
-      "coordenador"
-    ) {
-      location.href =
-        "/admin_coordenador.html";
+      } else if (
+        data.role ===
+        "diretor"
+      ) {
+        location.href =
+          "/admin_diretor.html";
 
-    } else if (
-      data.role ===
-      "professor"
-    ) {
-      location.href =
-        "/professor.html";
+      } else if (
+        data.role ===
+        "coordenador"
+      ) {
+        location.href =
+          "/admin_coordenador.html";
+
+      } else {
+        alert(
+          "Sua conta não é administrador."
+        );
+
+        localStorage.removeItem(
+          "token"
+        );
+
+        mostrar(
+          "login-box"
+        );
+      }
 
     } else {
-      // aluno
-      location.href =
-        "/index.html";
+
+      if (
+        data.role ===
+        "professor"
+      ) {
+        location.href =
+          "/professor.html";
+      } else {
+        location.href =
+          "/index.html";
+      }
+
     }
   };
 
@@ -214,6 +243,7 @@ document
     "cadastro-btn"
   )
   .onclick = async () => {
+
     const username =
       document.getElementById(
         "cadastro-user"
@@ -272,6 +302,7 @@ document
     "confirmar-cadastro-btn"
   )
   .onclick = async () => {
+
     const codigo =
       document.getElementById(
         "codigo-cadastro"
@@ -323,6 +354,7 @@ document
     "recuperar-btn"
   )
   .onclick = async () => {
+
     const email =
       document.getElementById(
         "recuperar-email"
