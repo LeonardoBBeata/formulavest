@@ -12,6 +12,14 @@
 
 <body>
 
+<!-- TOP BAR -->
+<header class="topbar-app">
+  <h2>🎓 FórmulaVest</h2>
+
+  <!-- BOLINHA DE PERFIL -->
+  <div id="avatar-mini" class="avatar-mini"></div>
+</header>
+
 <!-- TIMER -->
 <div id="timer-bar" style="display:none;">
   ⏱ Tempo restante: <span id="timer">00:00:00</span>
@@ -21,14 +29,11 @@
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <h2>🎓 FórmulaVest</h2>
-
     <ul>
       <li data-section="enem" class="active">Simulado ENEM</li>
       <li data-section="provao">Provão Paulista</li>
       <li data-section="dashboard">Dashboard</li>
       <li data-section="ranking">Ranking</li>
-      <li data-section="perfil" onclick="abrirPerfil()">Perfil</li>
       <li data-section="redacao">Redação</li>
     </ul>
 
@@ -74,22 +79,16 @@
 
       <div id="dashboard-container"></div>
 
-      <div>
-        <h2>Nível: <span id="nivel-user">1</span></h2>
-        <p>XP: <span id="xp-total">0</span></p>
+      <h2>Nível: <span id="nivel-user">1</span></h2>
+      <p>XP: <span id="xp-total">0</span></p>
 
-        <div style="width:100%; background:#ddd;">
-          <div id="xp-bar-fill" style="height:10px;width:0;background:green;"></div>
-        </div>
-
-        <small id="xp-next"></small>
-
-        <p id="streak-days"></p>
+      <div style="width:100%; background:#ddd;">
+        <div id="xp-bar-fill" style="height:10px;width:0;background:green;"></div>
       </div>
 
-      <canvas id="graficoEvolucao"></canvas>
+      <small id="streak-days"></small>
 
-      <div id="xp-popup" class="hidden"></div>
+      <canvas id="graficoEvolucao"></canvas>
     </section>
 
     <!-- RANKING -->
@@ -98,12 +97,6 @@
 
       <div id="top3"></div>
       <div id="ranking-list"></div>
-    </section>
-
-    <!-- PERFIL (tela opcional) -->
-    <section id="perfil" class="section hidden">
-      <h1>👤 Perfil</h1>
-      <p>Clique em "Perfil" na sidebar para editar.</p>
     </section>
 
     <!-- REDAÇÃO -->
@@ -130,28 +123,6 @@
     <button onclick="document.getElementById('final-screen').classList.add('hidden')">
       Fechar
     </button>
-  </div>
-</div>
-
-<!-- PERFIL MODAL -->
-<div id="profile-modal" class="hidden">
-  <div class="profile-box">
-
-    <h2>Perfil</h2>
-
-    <img id="profile-avatar" src="default.png" width="80">
-
-    <input type="file" id="foto-input">
-
-    <input id="nome-input" placeholder="Nome">
-    <input id="email-input" placeholder="Email">
-    <input id="senha-input" type="password" placeholder="Nova senha">
-
-    <img id="profile-preview" src="default.png" width="80">
-
-    <button onclick="salvarPerfil()">Salvar</button>
-    <button onclick="fecharPerfil()">Fechar</button>
-
   </div>
 </div>
 
