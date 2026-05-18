@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>FórmulaVest</title>
 
   <link rel="stylesheet" href="style.css">
   <script src="script.js" defer></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
   <div class="app-container">
@@ -21,149 +22,96 @@
       <h2>🎓 FórmulaVest</h2>
 
       <ul>
-        <li
-          data-section="enem"
-          class="active"
-        >
-          Simulado ENEM
-        </li>
-
-        <li data-section="provao">
-          Provão Paulista
-        </li>
-
-        <li data-section="dashboard">
-          Dashboard
-        </li>
-
-        <li data-section="ranking">
-          Ranking
-        </li>
-
-        <li data-section="redacao">
-          Redação
-        </li>
+        <li data-section="enem" class="active">Simulado ENEM</li>
+        <li data-section="provao">Provão Paulista</li>
+        <li data-section="dashboard">Dashboard</li>
+        <li data-section="ranking">Ranking</li>
+        <li data-section="redacao">Redação</li>
       </ul>
 
-      <button
-        id="logout-btn"
-        class="btn-red"
-      >
-        Logout
-      </button>
+      <button id="logout-btn" class="btn-red">Logout</button>
     </aside>
 
     <!-- MAIN -->
     <main class="main-content">
 
       <!-- ENEM -->
-      <section
-        id="enem"
-        class="section"
-      >
+      <section id="enem" class="section">
         <h1>📘 Simulado ENEM</h1>
 
         <div class="card">
-          <p>
-            Gere uma prova estilo ENEM.
-          </p>
-
-          <button id="gerar-enem-btn">
-            Gerar ENEM
-          </button>
+          <p>Gere uma prova estilo ENEM.</p>
+          <button id="gerar-enem-btn">Gerar ENEM</button>
         </div>
 
         <div id="enem-container"></div>
 
-        <button
-          id="finalizar-enem-btn"
-          class="hidden success-btn"
-        >
+        <button id="finalizar-enem-btn" class="hidden success-btn">
           Finalizar
         </button>
       </section>
 
       <!-- PROVÃO -->
-      <section
-        id="provao"
-        class="section hidden"
-      >
+      <section id="provao" class="section hidden">
         <h1>📗 Provão Paulista</h1>
 
         <div class="card">
-          <p>
-            Gere uma prova estilo
-            Provão Paulista.
-          </p>
-
-          <button id="gerar-provao-btn">
-            Gerar Provão
-          </button>
+          <p>Gere uma prova estilo Provão Paulista.</p>
+          <button id="gerar-provao-btn">Gerar Provão</button>
         </div>
 
         <div id="provao-container"></div>
 
-        <button
-          id="finalizar-provao-btn"
-          class="hidden success-btn"
-        >
+        <button id="finalizar-provao-btn" class="hidden success-btn">
           Finalizar
         </button>
       </section>
 
       <!-- DASHBOARD -->
-      <section
-        id="dashboard"
-        class="section hidden"
-      >
+      <section id="dashboard" class="section hidden">
         <h1>📊 Dashboard</h1>
 
         <div id="dashboard-container"></div>
+
+        <!-- EVOLUÇÃO -->
+        <div class="evolucao-box">
+          <div class="ranking-header">
+            <h2>📈 Sua evolução</h2>
+            <p>XP acumulado nas provas</p>
+          </div>
+
+          <canvas id="graficoEvolucao"></canvas>
+        </div>
       </section>
 
-     <!-- RANKING -->
-<section class="ranking-box">
-  <div class="ranking-header">
-    <h2>🏆 Ranking Geral</h2>
-    <p>Sua posição entre os melhores</p>
-  </div>
+      <!-- RANKING -->
+      <section id="ranking" class="section hidden">
+        <h1>🏆 Ranking Geral</h1>
 
-  <div class="ranking-top3" id="top3"></div>
+        <div class="ranking-box">
+          <div class="ranking-header">
+            <h2>Top alunos</h2>
+            <p>Sua posição entre os melhores</p>
+          </div>
 
-  <div class="ranking-list" id="ranking"></div>
-</section>
+          <div class="ranking-top3" id="top3"></div>
 
-<!-- EVOLUÇÃO -->
-<section class="evolucao-box">
-  <div class="ranking-header">
-    <h2>📈 Sua evolução</h2>
-    <p>XP acumulado nas provas</p>
-  </div>
+          <div class="ranking-list" id="ranking-list"></div>
+        </div>
+      </section>
 
-  <canvas id="graficoEvolucao"></canvas>
-</section>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <!-- REDAÇÃO -->
-      <section
-        id="redacao"
-        class="section hidden"
-      >
+      <section id="redacao" class="section hidden">
         <h1>✍️ Redação</h1>
 
-        <input
-          id="tema-redacao"
-          placeholder="Tema"
-        >
+        <input id="tema-redacao" placeholder="Tema">
 
         <textarea
           id="texto-redacao"
           placeholder="Digite sua redação..."
         ></textarea>
 
-        <button id="enviar-redacao">
-          Corrigir
-        </button>
+        <button id="enviar-redacao">Corrigir</button>
 
         <div id="feedback-redacao"></div>
       </section>
