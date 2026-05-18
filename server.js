@@ -565,24 +565,24 @@ app.post('/login-iniciar', async (req,res)=>{
       [email]
     );
 
-    const user = result.rows[0];
+const user = result.rows[0];
 
-    if(!user){
-        if (user.banido) {
-  return res.status(403).json({
-    error: "Usuário banido"
+if (!user) {
+  return res.status(404).json({
+    error: 'Email não encontrado'
   });
 }
-      return res.status(404).json({
-        error:'Email não encontrado'
-      });
-    }
 
-    const ok =
-      await bcrypt.compare(
-        senha,
-        user.senha
-      );
+if (user.banido) {
+  return res.status(403).json({
+    error: 'Usuário banido'
+  });
+}
+
+const ok = await bcrypt.compare(
+  senha,
+  user.senha
+);
 
     if(!ok){
       return res.status(401).json({
