@@ -259,9 +259,7 @@ async function salvarResultado() {
   const data = await res.json();
   if (!res.ok) return alert(data.error);
 
-  // XP + streak REAL
-  const xpGanhos = data.acertos * 10;
-  await animarXP(xpGanhos);
+  animarXP(data.acertos * 10);
   atualizarStreak();
 
   document.querySelectorAll('input[type="radio"]').forEach(i => i.disabled = true);
