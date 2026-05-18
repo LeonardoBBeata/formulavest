@@ -2612,16 +2612,17 @@ app.post('/salvar-prova', auth, async (req, res) => {
         percentual
       );
 
-    await db.query(`
+await db.query(`
 UPDATE usuarios
-SET
-  xp = xp + $1,
-  nivel = FLOOR((xp + $1) / 100) + 1
+SET xp = xp + $1
 WHERE id = $2
-    `, [
-      xpGanho,
-      req.user.id
-    ]);
+`, [xpGanho, req.user.id]);
+
+await db.query(`
+UPDATE usuarios
+SET nivel = FLOOR(xp / 100) + 1
+WHERE id = $1
+`, [req.user.id]);
 
     await db.query(`
       INSERT INTO provas(
@@ -2744,6 +2745,67 @@ app.get('/ranking', auth, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Erro ranking' });
   }
+});
+
+app.get("/perfil", auth, async (req, res) => {
+  const userId = req.user.id;
+
+  const user = await db.query(`
+    SELECT username, xp, nivel
+    FROM usuarios
+    WHERE id = $1
+  `, [userId]);
+
+  const provas = await db.query(`
+    SELECT COUNT(*) FROM provas
+    WHERE usuario_id = $1
+  `, [userId]);
+
+  const media = await db.query(`
+    SELECT COALESCE(AVG(percentual),0) as media
+    FROM provas
+    WHERE usuario_id = $1
+  `, [userId]);
+
+  res.json({
+    ...user.rows[0],
+    total_provas: Number(provas.rows[0].count),
+    media: Number(media.rows[0].media)
+  });
+});
+
+
+app.get("/exportar-pdf", auth, async (req, res) => {
+  const result = await db.query(`
+    SELECT * FROM provas
+    WHERE usuario_id = $1
+    ORDER BY id DESC
+  `, [req.user.id]);
+
+  const doc = new PDFDocument();
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=provas-formulavest.pdf"
+  );
+
+  doc.pipe(res);
+
+  doc.fontSize(20).text("FórmulaVest - Histórico", {
+    align: "center"
+  });
+
+  doc.moveDown();
+
+  result.rows.forEach((p, i) => {
+    doc.fontSize(14).text(`Prova ${i + 1}`);
+    doc.text(`Acertos: ${p.acertos}/${p.total}`);
+    doc.text(`Percentual: ${p.percentual.toFixed(1)}%`);
+    doc.moveDown();
+  });
+
+  doc.end();
 });
 
 // ======================
