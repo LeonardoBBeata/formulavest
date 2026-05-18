@@ -1,6 +1,4 @@
 require('dotenv').config();
-console.log("BREVO KEY:", process.env.BREVO_API_KEY);
-console.log("EMAIL FROM:", process.env.EMAIL_FROM);
 
 const express = require('express');
 const cors = require('cors');
@@ -71,7 +69,10 @@ async function enviarEmail(
 
 app.use(cookieParser());
 app.use(cors({
-  origin: "*"
+  origin: [
+    "https://formulavest.onrender.com",
+    "http://localhost:5500"
+  ]
 }));
 
 app.use(express.json());
@@ -827,11 +828,15 @@ app.post('/forgot-password', async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      { email },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+const token = crypto.randomUUID();
+
+await db.query(`
+  UPDATE usuarios
+  SET
+    reset_token=$1,
+    reset_expira=NOW() + INTERVAL '1 hour'
+  WHERE email=$2
+`, [token, email]);
 
     const link =
       `https://formulavest.onrender.com/reset-password.html?token=${token}`;
@@ -881,11 +886,20 @@ app.post(
           });
       }
 
-      const decoded =
-        jwt.verify(
-          token,
-          process.env.JWT_SECRET
-        );
+const result = await db.query(`
+  SELECT *
+  FROM usuarios
+  WHERE reset_token=$1
+  AND reset_expira > NOW()
+`, [token]);
+
+const user = result.rows[0];
+
+if (!user) {
+  return res.status(400).json({
+    error: "Token inválido"
+  });
+}
 
       const email =
         decoded.email;
@@ -1066,6 +1080,164 @@ app.post(
   }
 );
 
+//periodos
+app.post(
+  "/admin/criar-periodo",
+  auth,
+  permitir(
+    "empresa_admin",
+    "diretor"
+  ),
+  async (req, res) => {
+    try {
+      const {
+        escola_id,
+        nome
+      } = req.body;
+
+      let escola;
+
+      // diretor só pode usar a própria escola
+      if (
+        req.user.role ===
+        "diretor"
+      ) {
+        escola =
+          await db.query(`
+            SELECT *
+            FROM escolas
+            WHERE id=$1
+            AND id=$2
+          `, [
+            escola_id,
+            req.user.escola_id
+          ]);
+
+      } else {
+        escola =
+          await db.query(`
+            SELECT *
+            FROM escolas
+            WHERE id=$1
+            AND empresa_id=$2
+          `, [
+            escola_id,
+            req.user.empresa_id
+          ]);
+      }
+
+      if (
+        escola.rows.length === 0
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
+
+      await db.query(`
+        INSERT INTO periodos(
+          escola_id,
+          nome
+        )
+        VALUES($1,$2)
+      `, [
+        escola_id,
+        nome
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro criar período"
+      });
+    }
+  }
+);
+
+
+//listar periodos
+app.get(
+  "/admin/periodos/:escolaId",
+  auth,
+  permitir(
+    "formulavest_master",
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
+  async (req, res) => {
+    try {
+      const escolaId =
+        req.params.escolaId;
+
+      const escola =
+        await db.query(`
+          SELECT *
+          FROM escolas
+          WHERE id=$1
+        `, [escolaId]);
+
+      if (
+        escola.rows.length === 0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Escola não encontrada"
+          });
+      }
+
+      const esc =
+        escola.rows[0];
+
+      if (
+        req.user.role !==
+          "formulavest_master" &&
+        esc.empresa_id !==
+          req.user.empresa_id
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
+
+      const result =
+        await db.query(`
+          SELECT *
+          FROM periodos
+          WHERE escola_id=$1
+          ORDER BY id DESC
+        `, [escolaId]);
+
+      res.json({
+        periodos:
+          result.rows
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro listar períodos"
+      });
+    }
+  }
+);
+
 //escolas
 app.post(
   "/admin/criar-escola",
@@ -1121,6 +1293,45 @@ app.post(
         periodo_id
       } = req.body;
 
+      const periodo =
+        await db.query(`
+          SELECT
+            p.*,
+            e.empresa_id
+          FROM periodos p
+          JOIN escolas e
+          ON e.id = p.escola_id
+          WHERE p.id=$1
+        `, [
+          periodo_id
+        ]);
+
+      if (
+        periodo.rows.length === 0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Período inválido"
+          });
+      }
+
+      const p =
+        periodo.rows[0];
+
+      if (
+        p.empresa_id !==
+        req.user.empresa_id
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
+
       await db.query(`
         INSERT INTO salas(
           periodo_id,
@@ -1146,7 +1357,6 @@ app.post(
     }
   }
 );
-
 // ======================
 // ADMIN USUÁRIOS
 // ======================
@@ -1414,10 +1624,31 @@ app.put(
           });
       }
 
+      const nivel = {
+        formulavest_master: 5,
+        empresa_admin: 4,
+        diretor: 3,
+        coordenador: 2,
+        professor: 1,
+        aluno: 0
+      };
+
+      if (
+        nivel[user.role] >=
+        nivel[req.user.role]
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Você não pode banir esse usuário"
+          });
+      }
+
       await db.query(`
         UPDATE usuarios
         SET banido =
-        NOT banido
+          NOT banido
         WHERE id=$1
       `, [id]);
 
@@ -1482,8 +1713,30 @@ app.delete(
           });
       }
 
+      const nivel = {
+        formulavest_master: 5,
+        empresa_admin: 4,
+        diretor: 3,
+        coordenador: 2,
+        professor: 1,
+        aluno: 0
+      };
+
+      if (
+        nivel[user.role] >=
+        nivel[req.user.role]
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Você não pode excluir esse usuário"
+          });
+      }
+
       await db.query(`
-        DELETE FROM usuarios
+        DELETE
+        FROM usuarios
         WHERE id=$1
       `, [id]);
 
@@ -1724,8 +1977,61 @@ app.get(
 
 
 // ======================
-// LISTAR EMPRESAS
+// LISTAR EMPRESAS/escolas
 // ======================
+
+app.get(
+  "/admin/escolas",
+  auth,
+  permitir(
+    "formulavest_master",
+    "empresa_admin",
+    "diretor"
+  ),
+  async (req, res) => {
+    try {
+      let result;
+
+      // MASTER vê todas
+      if (
+        req.user.role ===
+        "formulavest_master"
+      ) {
+        result =
+          await db.query(`
+            SELECT *
+            FROM escolas
+            ORDER BY id DESC
+          `);
+
+      // empresa/diretor só da empresa
+      } else {
+        result =
+          await db.query(`
+            SELECT *
+            FROM escolas
+            WHERE empresa_id=$1
+            ORDER BY id DESC
+          `, [
+            req.user.empresa_id
+          ]);
+      }
+
+      res.json({
+        escolas:
+          result.rows
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro listar escolas"
+      });
+    }
+  }
+);
 
 app.get(
   "/master/empresas",
