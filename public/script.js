@@ -1,5 +1,4 @@
 const API = "https://formulavest.onrender.com";
-
 const token = localStorage.getItem("token");
 
 if (!token) {
@@ -10,6 +9,9 @@ let questoes = [];
 let provaId = null;
 let grafico = null;
 
+let xpAtual = 0;
+let nivelAtual = 1;
+
 window.addEventListener("DOMContentLoaded", iniciarApp);
 
 function iniciarApp() {
@@ -19,6 +21,7 @@ function iniciarApp() {
   carregarDashboard();
   carregarRanking();
   carregarGrafico();
+  carregarDuolingo();
 }
 
 /* ======================
@@ -39,6 +42,113 @@ function configurarAbas() {
       document.getElementById(alvo).classList.remove("hidden");
     });
   });
+}
+
+/* ======================
+   DUOLINGO XP SYSTEM
+====================== */
+async function carregarDuolingo() {
+  const res = await fetch(`${API}/me`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const user = await res.json();
+
+  xpAtual = user.xp || 0;
+  nivelAtual = user.nivel || 1;
+
+  atualizarUI();
+}
+
+function atualizarUI() {
+  const xpNivel = xpAtual % 100;
+
+  const xpTotalEl = document.getElementById("xp-total");
+  const nivelEl = document.getElementById("nivel-user");
+  const barra = document.getElementById("xp-bar-fill");
+  const xpNext = document.getElementById("xp-next");
+
+  if (xpTotalEl) xpTotalEl.innerText = xpAtual;
+  if (nivelEl) nivelEl.innerText = nivelAtual;
+
+  if (barra) {
+    barra.style.width = `${(xpNivel / 100) * 100}%`;
+  }
+
+  if (xpNext) {
+    xpNext.innerText = `${100 - xpNivel} XP para próximo nível`;
+  }
+}
+
+async function animarXP(ganho) {
+  const popup = document.getElementById("xp-popup");
+
+  if (popup) {
+    popup.innerText = `+${ganho} XP`;
+    popup.classList.remove("hidden");
+
+    setTimeout(() => popup.classList.add("hidden"), 1000);
+  }
+
+  // atualiza backend
+  const res = await fetch(`${API}/add-xp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ xp: ganho })
+  });
+
+  const data = await res.json();
+  if (!res.ok) return console.log(data.error);
+
+  xpAtual = data.xp;
+  nivelAtual = data.nivel;
+
+  atualizarUI();
+  checarLevelUp();
+}
+
+function checarLevelUp() {
+  const novoNivel = Math.floor(xpAtual / 100) + 1;
+
+  if (novoNivel > nivelAtual) {
+    nivelAtual = novoNivel;
+
+    const el = document.getElementById("nivel-user");
+    if (!el) return;
+
+    el.classList.add("level-up");
+
+    setTimeout(() => {
+      el.classList.remove("level-up");
+    }, 800);
+  }
+}
+
+function atualizarStreak() {
+  const hoje = new Date().toDateString();
+  const ultimo = localStorage.getItem("lastStudyDay");
+
+  let streakAtual = Number(localStorage.getItem("streak") || 0);
+
+  if (ultimo !== hoje) {
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+
+    if (ultimo === ontem.toDateString()) {
+      streakAtual++;
+    } else {
+      streakAtual = 1;
+    }
+
+    localStorage.setItem("lastStudyDay", hoje);
+    localStorage.setItem("streak", streakAtual);
+  }
+
+  const el = document.getElementById("streak-days");
+  if (el) el.innerText = `${streakAtual} dias 🔥`;
 }
 
 /* ======================
@@ -74,7 +184,7 @@ async function gerarEnem() {
   const data = await res.json();
   if (!res.ok) return alert(data.error);
 
-  provaId = data.prova_id || null;
+  provaId = data.prova_id;
   questoes = data.questoes;
 
   renderProva(data.questoes, "enem-container", "finalizar-enem-btn");
@@ -89,7 +199,7 @@ async function gerarProvao() {
   const data = await res.json();
   if (!res.ok) return alert(data.error);
 
-  provaId = data.prova_id || null;
+  provaId = data.prova_id;
   questoes = data.questoes;
 
   renderProva(data.questoes, "provao-container", "finalizar-provao-btn");
@@ -122,7 +232,7 @@ function renderProva(lista, containerId, finalizarId) {
 }
 
 /* ======================
-   SALVAR PROVA
+   SALVAR PROVA (FIX PRINCIPAL)
 ====================== */
 async function salvarResultado() {
   const respostas = questoes.map((q, i) => {
@@ -149,6 +259,11 @@ async function salvarResultado() {
   const data = await res.json();
   if (!res.ok) return alert(data.error);
 
+  // XP + streak REAL
+  const xpGanhos = data.acertos * 10;
+  await animarXP(xpGanhos);
+  atualizarStreak();
+
   document.querySelectorAll('input[type="radio"]').forEach(i => i.disabled = true);
 
   document.getElementById("finalizar-enem-btn").classList.add("hidden");
@@ -172,7 +287,6 @@ async function carregarDashboard() {
   });
 
   const data = await res.json();
-
   const div = document.getElementById("dashboard-container");
 
   if (!data.provas?.length) {
@@ -181,7 +295,6 @@ async function carregarDashboard() {
   }
 
   const total = data.provas.length;
-
   const media = data.provas.reduce((a, p) => a + p.percentual, 0) / total;
 
   div.innerHTML = `
@@ -191,7 +304,7 @@ async function carregarDashboard() {
 }
 
 /* ======================
-   RANKING (CORRIGIDO)
+   RANKING
 ====================== */
 async function carregarRanking() {
   const res = await fetch(`${API}/ranking`, {
@@ -222,7 +335,7 @@ async function carregarRanking() {
 }
 
 /* ======================
-   GRÁFICO (FIX)
+   GRÁFICO
 ====================== */
 async function carregarGrafico() {
   const res = await fetch(`${API}/provas`, {
@@ -243,6 +356,7 @@ async function carregarGrafico() {
   });
 
   const ctx = document.getElementById("graficoEvolucao");
+  if (!ctx) return;
 
   if (grafico) grafico.destroy();
 
@@ -287,7 +401,7 @@ async function corrigirRedacao() {
 }
 
 /* ======================
-   NAVEGAÇÃO DASHBOARD
+   DASHBOARD NAV
 ====================== */
 function mostrarDashboard() {
   document.querySelectorAll(".sidebar li").forEach(li => li.classList.remove("active"));
