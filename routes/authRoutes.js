@@ -289,6 +289,11 @@ app.post('/login-confirmar', async (req, res) => {
         error: 'Usuário banido'
       });
     }
+      if (!user.verificado) {
+  return res.status(403).json({
+    error: 'Confirme seu email primeiro'
+  });
+}
 
     // verifica senha
     const senhaOk =
@@ -360,11 +365,11 @@ app.post('/forgot-password', async (req, res) => {
       WHERE email = $1
     `, [email]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Email não encontrado'
-      });
-    }
+if (result.rows.length === 0) {
+  return res.json({
+    message: "Se o email existir, enviaremos um link."
+  });
+}
 
 const token = crypto.randomUUID();
 
