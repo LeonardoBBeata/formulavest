@@ -278,3 +278,108 @@ button:hover {
 .section.hidden {
   display: none;
 }
+/* =========================
+   RANKING
+========================= */
+
+.ranking-box,
+.evolucao-box{
+  background:white;
+  border-radius:20px;
+  padding:25px;
+  margin-top:30px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+.ranking-header h2{
+  margin:0;
+  color:#1e293b;
+}
+
+.ranking-header p{
+  color:#64748b;
+  margin-bottom:20px;
+}
+
+.ranking-top3{
+  display:flex;
+  gap:15px;
+  margin-bottom:25px;
+}
+
+.top-card{
+  flex:1;
+  padding:20px;
+  border-radius:18px;
+  text-align:center;
+  color:white;
+  font-weight:bold;
+}
+
+.gold{
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+}
+
+.silver{
+  background:linear-gradient(135deg,#cbd5e1,#94a3b8);
+}
+
+.bronze{
+  background:linear-gradient(135deg,#d97706,#92400e);
+}
+
+.top-card .xp{
+  font-size:22px;
+  margin-top:10px;
+}
+
+.ranking-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.ranking-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px 18px;
+  background:#f8fafc;
+  border-radius:14px;
+  transition:.2s;
+}
+
+.ranking-item:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+
+.ranking-item.me{
+  border:2px solid #2563eb;
+  background:#eff6ff;
+}
+
+.rank-left{
+  display:flex;
+  gap:15px;
+  align-items:center;
+}
+
+.rank-pos{
+  font-weight:bold;
+  color:#64748b;
+  width:35px;
+}
+
+.rank-user{
+  font-weight:600;
+}
+
+.rank-xp{
+  color:#2563eb;
+  font-weight:bold;
+}
+
+canvas{
+  max-height:300px;
+}
