@@ -8,17 +8,34 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="script.js" defer></script>
+
+  <style>
+    /* bolinha perfil */
+    .profile-circle {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #2ecc71;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      z-index: 999;
+    }
+  </style>
 </head>
 
 <body>
 
-<!-- TOP BAR -->
-<header class="topbar-app">
-  <h2>🎓 FórmulaVest</h2>
-
-  <!-- BOLINHA DE PERFIL -->
-  <div id="avatar-mini" class="avatar-mini"></div>
-</header>
+<!-- PERFIL BUTTON -->
+<div class="profile-circle" onclick="window.location.href='perfil.html'">
+  👤
+</div>
 
 <!-- TIMER -->
 <div id="timer-bar" style="display:none;">
@@ -29,6 +46,8 @@
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
+    <h2>🎓 FórmulaVest</h2>
+
     <ul>
       <li data-section="enem" class="active">Simulado ENEM</li>
       <li data-section="provao">Provão Paulista</li>
@@ -79,14 +98,16 @@
 
       <div id="dashboard-container"></div>
 
-      <h2>Nível: <span id="nivel-user">1</span></h2>
-      <p>XP: <span id="xp-total">0</span></p>
+      <div>
+        <h2>Nível: <span id="nivel-user">1</span></h2>
+        <p>XP: <span id="xp-total">0</span></p>
 
-      <div style="width:100%; background:#ddd;">
-        <div id="xp-bar-fill" style="height:10px;width:0;background:green;"></div>
+        <div style="width:100%; background:#ddd;">
+          <div id="xp-bar-fill" style="height:10px;width:0;background:green;"></div>
+        </div>
+
+        <p id="streak-days"></p>
       </div>
-
-      <small id="streak-days"></small>
 
       <canvas id="graficoEvolucao"></canvas>
     </section>
