@@ -314,17 +314,34 @@ function gerarToken(user) {
   );
 }
 
-    function permitir(...roles) {
+function permitir(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        error: "Sem permissão"
-      });
+
+    // master pode tudo
+    if (
+      req.user.role ===
+      "formulavest_master"
+    ) {
+      return next();
+    }
+
+    if (
+      !roles.includes(
+        req.user.role
+      )
+    ) {
+      return res
+        .status(403)
+        .json({
+          error:
+            "Sem permissão"
+        });
     }
 
     next();
   };
 }
+
 
 function auth(req, res, next) {
   const header = req.headers.authorization;
@@ -1638,6 +1655,259 @@ app.get(
     }
   }
 );
+
+// ======================
+// MASTER STATS
+// ======================
+
+app.get(
+  "/master/stats",
+  auth,
+  permitir(
+    "formulavest_master"
+  ),
+  async (_, res) => {
+    try {
+
+      const empresas =
+        await db.query(`
+          SELECT COUNT(*)
+          FROM empresas
+        `);
+
+      const usuarios =
+        await db.query(`
+          SELECT COUNT(*)
+          FROM usuarios
+        `);
+
+      const provas =
+        await db.query(`
+          SELECT COUNT(*)
+          FROM provas
+        `);
+
+      res.json({
+        totalEmpresas:
+          Number(
+            empresas
+              .rows[0]
+              .count
+          ),
+
+        totalUsuarios:
+          Number(
+            usuarios
+              .rows[0]
+              .count
+          ),
+
+        totalProvas:
+          Number(
+            provas
+              .rows[0]
+              .count
+          )
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro stats"
+      });
+    }
+  }
+);
+
+
+
+// ======================
+// LISTAR EMPRESAS
+// ======================
+
+app.get(
+  "/master/empresas",
+  auth,
+  permitir(
+    "formulavest_master"
+  ),
+  async (_, res) => {
+    try {
+
+      const result =
+        await db.query(`
+          SELECT *
+          FROM empresas
+          ORDER BY id DESC
+        `);
+
+      res.json({
+        empresas:
+          result.rows
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro empresas"
+      });
+    }
+  }
+);
+
+
+
+// ======================
+// CRIAR EMPRESA
+// ======================
+
+app.post(
+  "/master/criar-empresa",
+  auth,
+  permitir(
+    "formulavest_master"
+  ),
+  async (req, res) => {
+    try {
+
+      const {
+        nome
+      } = req.body;
+
+      await db.query(`
+        INSERT INTO empresas(
+          nome
+        )
+        VALUES($1)
+      `, [
+        nome
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro criar empresa"
+      });
+    }
+  }
+);
+
+
+
+// ======================
+// EXCLUIR EMPRESA
+// ======================
+
+app.delete(
+  "/master/empresa/:id",
+  auth,
+  permitir(
+    "formulavest_master"
+  ),
+  async (req, res) => {
+    try {
+
+      const id =
+        req.params.id;
+
+      await db.query(`
+        DELETE
+        FROM empresas
+        WHERE id=$1
+      `, [
+        id
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro excluir empresa"
+      });
+    }
+  }
+);
+
+
+
+// ======================
+// CRIAR EMPRESA ADMIN
+// ======================
+
+app.post(
+  "/master/criar-admin",
+  auth,
+  permitir(
+    "formulavest_master"
+  ),
+  async (req, res) => {
+    try {
+
+      const {
+        username,
+        email,
+        senha,
+        empresa_id
+      } = req.body;
+
+      const hash =
+        await bcrypt.hash(
+          senha,
+          10
+        );
+
+      await db.query(`
+        INSERT INTO usuarios(
+          username,
+          email,
+          senha,
+          role,
+          empresa_id,
+          verificado
+        )
+        VALUES(
+          $1,$2,$3,
+          'empresa_admin',
+          $4,
+          TRUE
+        )
+      `, [
+        username,
+        email,
+        hash,
+        empresa_id
+      ]);
+
+      res.json({
+        ok: true
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      res.status(500).json({
+        error:
+          "Erro criar admin"
+      });
+    }
+  }
+);
+
 
 
 // ======================
