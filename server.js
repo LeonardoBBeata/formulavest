@@ -117,6 +117,7 @@ async function enviarEmail(
 // ======================
 
 app.use(cookieParser());
+
 app.use(cors({
   origin: [
     "https://formulavest.onrender.com",
@@ -126,8 +127,10 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use(express.static("public"));
 
+// 👇 COLOCA AQUI (IMPORTANTE)
+app.use("/uploads", express.static("public/uploads"));
+app.use(express.static("public"));
 // ======================
 // DATABASE INIT
 // ======================
@@ -1047,32 +1050,26 @@ app.post(
 
 app.post("/add-xp", auth, async (req, res) => {
   try {
-    const xpNum = Number(req.body.xp || 0);
-    const userId = req.user.id;
+    const xp = Number(req.body.xp || 0);
 
-    if (!xpNum || xpNum < 0) {
+    if (xp <= 0) {
       return res.status(400).json({ error: "XP inválido" });
     }
 
-    await db.query(`
+    const result = await db.query(`
       UPDATE usuarios
       SET 
         xp = xp + $1,
         nivel = FLOOR((xp + $1) / 100) + 1
       WHERE id = $2
-    `, [xpNum, userId]);
-
-    const result = await db.query(`
-      SELECT xp, nivel
-      FROM usuarios
-      WHERE id = $1
-    `, [userId]);
+      RETURNING xp, nivel
+    `, [xp, req.user.id]);
 
     res.json(result.rows[0]);
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao adicionar XP" });
+    res.status(500).json({ error: "Erro XP" });
   }
 });
 // ======================
@@ -1786,35 +1783,35 @@ app.delete(
 //=======================
 // ROLES
 //=======================
-app.get(
-  "/me",
-  auth,
-  async (req, res) => {
-    try {
-      const result = await db.query(
-        `
-        SELECT
-          id,
-          username,
-          email,
-          foto,
-          role,
-          empresa_id,
-          escola_id,
-          sala_id,
-          xp,
-          nivel
-        FROM usuarios
-        WHERE id = $1
-        `,
-        [req.user.id]
-      );
+app.get("/me", auth, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT id, username, email, foto, role, xp, nivel
+      FROM usuarios
+      WHERE id = $1
+    `, [req.user.id]);
 
-      const user = result.rows[0];
+    const user = result.rows[0];
 
-      if (!user) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-      }
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      foto: user.foto || "/default.png",
+      role: user.role,
+      xp: user.xp,
+      nivel: user.nivel
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro /me" });
+  }
+});
 
       // fallback de foto padrão
 if (!user.foto) {
@@ -2766,18 +2763,90 @@ app.get(
     }
   }
 );
+
+
+
+
+app.get("/dashboard", auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await db.query(`
+      SELECT xp, nivel
+      FROM usuarios
+      WHERE id = $1
+    `, [userId]);
+
+    const provas = await db.query(`
+      SELECT acertos, total, percentual, criado_em
+      FROM provas
+      WHERE usuario_id = $1
+      ORDER BY id ASC
+    `, [userId]);
+
+    res.json({
+      user: user.rows[0],
+      provas: provas.rows
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro dashboard" });
+  }
+});
+
+
+
+app.get("/grafico", auth, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT questoes
+      FROM provas
+      WHERE usuario_id = $1
+    `, [req.user.id]);
+
+    const materias = {
+      matematica: 0,
+      portugues: 0,
+      ciencias: 0,
+      humanas: 0
+    };
+
+    result.rows.forEach(p => {
+      const q = p.questoes;
+
+      q.forEach(item => {
+        const materia = item.materia || "geral";
+
+        if (!materias[materia]) {
+          materias[materia] = 0;
+        }
+
+        if (item.correta === item.selecionada) {
+          materias[materia]++;
+        }
+      });
+    });
+
+    res.json(materias);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro gráfico" });
+  }
+});
 // ======================
 // RANKING
 // ======================
 app.get("/ranking", auth, async (req, res) => {
   try {
     let query = `
-      SELECT username, xp, nivel
+      SELECT username, xp, nivel, foto
       FROM usuarios
     `;
 
-    const conditions = [];
     const params = [];
+    const conditions = [];
 
     if (req.user.role !== "formulavest_master") {
       conditions.push(`empresa_id = $${params.length + 1}`);
@@ -2797,14 +2866,13 @@ app.get("/ranking", auth, async (req, res) => {
 
     const result = await db.query(query, params);
 
-    res.json({ ranking: result.rows });
+    res.json(result.rows); // 🔥 IMPORTANTE: array puro
 
   } catch (err) {
-    console.error(err);
+    console.error("Ranking erro:", err);
     res.status(500).json({ error: "Erro ranking" });
   }
 });
-
 // ======================
 // CORRIGIR REDAÇÃO
 // ======================
