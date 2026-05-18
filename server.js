@@ -1,4 +1,4 @@
-app.set("trust proxy", 1);
+
 require('dotenv').config();
 
 const crypto = require('crypto');
@@ -16,6 +16,17 @@ const validator = require('validator');
 const { Pool } = require('pg');
 
 const app = express();
+
+app.set("trust proxy", 1);
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+
 const PORT = process.env.PORT || 3000;
 
 const cache = new NodeCache({
@@ -281,17 +292,6 @@ async function criarAdmMaster() {
     );
   }
 }
-
-const loginLimiter =
-  rateLimit({
-    windowMs:
-      15 * 60 * 1000,
-    max: 10,
-    message: {
-      error:
-        "Muitas tentativas. Tente novamente depois."
-    }
-  });
 
 
 
@@ -1007,23 +1007,20 @@ app.post(
 
 app.post("/add-xp", auth, async (req, res) => {
   try {
-    const { xp } = req.body;
+    const xpNum = Number(req.body.xp || 0);
     const userId = req.user.id;
 
-    const xpNum = Number(xp || 0);
+    if (!xpNum || xpNum < 0) {
+      return res.status(400).json({ error: "XP inválido" });
+    }
 
     await db.query(`
       UPDATE usuarios
-      SET xp = xp + $1
+      SET 
+        xp = xp + $1,
+        nivel = FLOOR((xp + $1) / 100) + 1
       WHERE id = $2
-      RETURNING xp, nivel
     `, [xpNum, userId]);
-
-    await db.query(`
-      UPDATE usuarios
-      SET nivel = FLOOR(xp / 100) + 1
-      WHERE id = $1
-    `, [userId]);
 
     const result = await db.query(`
       SELECT xp, nivel
@@ -1519,250 +1516,142 @@ app.get(
 // ======================
 // ADMIN CRIAR USUÁRIO
 // ======================
-app.post(
-  "/admin/criar-usuario",
-  auth,
-  permitir(
-    "formulavest_master",
-    "empresa_admin",
-    "diretor",
-    "coordenador"
-  ),
-  async (req, res) => {
-    try {
-      const {
+app.post("/admin/criar-usuario", auth, permitir(
+  "formulavest_master",
+  "empresa_admin",
+  "diretor",
+  "coordenador"
+), async (req, res) => {
+  try {
+    const {
+      username,
+      email,
+      senha,
+      role,
+      escola_id,
+      sala_id
+    } = req.body;
+
+    if (!username || username.length < 3) {
+      return res.status(400).json({ error: "Username inválido" });
+    }
+
+    const emailNorm = email?.toLowerCase().trim();
+
+    const existe = await db.query(`
+      SELECT id FROM usuarios
+      WHERE email=$1 OR username=$2
+    `, [emailNorm, username]);
+
+    if (existe.rows.length > 0) {
+      return res.status(400).json({ error: "Usuário já existe" });
+    }
+
+    const hash = await bcrypt.hash(senha, 10);
+
+    let empresaId = req.user.empresa_id;
+    let escolaId = escola_id;
+
+    if (req.user.role === "formulavest_master") {
+      empresaId = req.body.empresa_id;
+    }
+
+    if (req.user.role === "diretor") {
+      escolaId = req.user.escola_id;
+    }
+
+    if (req.user.role === "coordenador") {
+      if (!["aluno", "professor"].includes(role)) {
+        return res.status(403).json({ error: "Sem permissão" });
+      }
+      escolaId = req.user.escola_id;
+    }
+
+    await db.query(`
+      INSERT INTO usuarios(
         username,
         email,
         senha,
         role,
+        empresa_id,
         escola_id,
         sala_id,
-        empresa_id
-      } = req.body;
+        verificado
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)
+    `, [
+      username,
+      emailNorm,
+      hash,
+      role,
+      empresaId,
+      escolaId,
+      sala_id
+    ]);
 
-      // só MASTER pode criar empresa_admin
-      if (
-        role === "empresa_admin" &&
-        req.user.role !==
-        "formulavest_master"
-      ) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Sem permissão"
-          });
-      }
+    res.json({ ok: true });
 
-      let empresaId =
-        req.user.empresa_id;
-
-      let novaEscola =
-        escola_id;
-
-      // MASTER pode escolher empresa
-      if (
-        req.user.role ===
-        "formulavest_master"
-      ) {
-        empresaId =
-          empresa_id;
-      }
-
-      // diretor preso à escola dele
-      if (
-        req.user.role ===
-        "diretor"
-      ) {
-        novaEscola =
-          req.user.escola_id;
-      }
-
-      // coordenador só cria professor/aluno
-      if (
-        req.user.role ===
-        "coordenador"
-      ) {
-        if (
-          role !==
-            "professor" &&
-          role !==
-            "aluno"
-        ) {
-          return res
-            .status(403)
-            .json({
-              error:
-                "Sem permissão"
-            });
-        }
-
-        novaEscola =
-          req.user.escola_id;
-      }
-
-      // verificar se já existe
-      const existe =
-        await db.query(`
-          SELECT id
-          FROM usuarios
-          WHERE email=$1
-             OR username=$2
-        `, [
-          email
-            .toLowerCase()
-            .trim(),
-          username
-        ]);
-
-      if (
-        existe.rows.length > 0
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Usuário já existe"
-          });
-      }
-
-      // gerar hash só depois
-      const hash =
-        await bcrypt.hash(
-          senha,
-          10
-        );
-
-      // inserir
-      await db.query(`
-        INSERT INTO usuarios(
-          username,
-          email,
-          senha,
-          role,
-          empresa_id,
-          escola_id,
-          sala_id,
-          verificado
-        )
-        VALUES(
-          $1,$2,$3,$4,$5,$6,$7,TRUE
-        )
-      `, [
-        username,
-        email
-          .toLowerCase()
-          .trim(),
-        hash,
-        role,
-        empresaId,
-        novaEscola,
-        sala_id
-      ]);
-
-      res.json({
-        ok: true
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      res.status(500).json({
-        error:
-          "Erro criar usuário"
-      });
-    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro criar usuário" });
   }
-);
+});
 // ======================
 // BANIR/DESBANIR
 // ======================
-app.put(
-  "/admin/usuario/:id/banir",
-  auth,
-  permitir(
-    "empresa_admin",
-    "diretor",
-    "coordenador"
-  ),
-  async (req, res) => {
-    try {
-      const id =
-        req.params.id;
+app.put("/admin/usuario/:id/banir", auth, permitir(
+  "empresa_admin",
+  "diretor",
+  "coordenador"
+), async (req, res) => {
+  try {
+    const id = req.params.id;
 
-      const alvo =
-        await db.query(`
-          SELECT *
-          FROM usuarios
-          WHERE id=$1
-        `, [id]);
+    const result = await db.query(`
+      SELECT * FROM usuarios WHERE id=$1
+    `, [id]);
 
-      const user =
-        alvo.rows[0];
+    const user = result.rows[0];
 
-      if (!user) {
-        return res
-          .status(404)
-          .json({
-            error:
-              "Usuário não encontrado"
-          });
-      }
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
 
-      if (
-        user.empresa_id !==
-        req.user.empresa_id
-      ) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Sem permissão"
-          });
-      }
+    if (user.role === "formulavest_master") {
+      return res.status(403).json({ error: "Não pode alterar master" });
+    }
 
-      const nivel = {
-        formulavest_master: 5,
-        empresa_admin: 4,
-        diretor: 3,
-        coordenador: 2,
-        professor: 1,
-        aluno: 0
-      };
+    if (user.empresa_id !== req.user.empresa_id) {
+      return res.status(403).json({ error: "Sem permissão" });
+    }
 
-      if (
-        nivel[user.role] >=
-        nivel[req.user.role]
-      ) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Você não pode banir esse usuário"
-          });
-      }
+    const nivel = {
+      empresa_admin: 4,
+      diretor: 3,
+      coordenador: 2,
+      professor: 1,
+      aluno: 0
+    };
 
-      await db.query(`
-        UPDATE usuarios
-        SET banido =
-          NOT banido
-        WHERE id=$1
-      `, [id]);
-
-      res.json({
-        ok: true
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      res.status(500).json({
-        error:
-          "Erro banir"
+    if (nivel[user.role] >= nivel[req.user.role]) {
+      return res.status(403).json({
+        error: "Hierarquia insuficiente"
       });
     }
+
+    await db.query(`
+      UPDATE usuarios
+      SET banido = NOT banido
+      WHERE id = $1
+    `, [id]);
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro banir usuário" });
   }
-);
+});
 
 // ======================
 // EXCLUIR USUÁRIO
@@ -2594,72 +2483,47 @@ RETORNE SOMENTE JSON:
 // ======================
 // SALVAR PROVA
 // ======================
-app.post('/salvar-prova', auth, async (req, res) => {
+app.post("/salvar-prova", auth, async (req, res) => {
   try {
-    const {
-      prova_id,
-      questoes
-    } = req.body;
+    const { prova_id, questoes } = req.body;
 
-    const ativo =
-      await db.query(`
-        SELECT *
-        FROM provas_ativas
-        WHERE id=$1
-        AND usuario_id=$2
-      `, [
-        prova_id,
-        req.user.id
-      ]);
+    const ativo = await db.query(`
+      SELECT *
+      FROM provas_ativas
+      WHERE id=$1 AND usuario_id=$2
+    `, [prova_id, req.user.id]);
 
-    const prova =
-      ativo.rows[0];
+    const prova = ativo.rows[0];
 
     if (!prova) {
-      return res.status(404).json({
-        error:
-          "Prova não encontrada"
-      });
+      return res.status(404).json({ error: "Prova não encontrada" });
     }
 
     if (prova.finalizada) {
-      return res.status(400).json({
-        error:
-          "Essa prova já foi enviada"
-      });
+      return res.status(400).json({ error: "Prova já finalizada" });
     }
+
+    const gabarito = prova.questoes;
 
     let acertos = 0;
 
-    questoes.forEach(q => {
-      if (
-        q.selecionada ===
-        q.correta
-      ) {
+    questoes.forEach((q, i) => {
+      if (q.selecionada === gabarito[i].correta) {
         acertos++;
       }
     });
 
-    const percentual =
-      (acertos /
-        questoes.length) * 100;
+    const percentual = (acertos / questoes.length) * 100;
+    const xpGanho = Math.floor(percentual);
 
-    const xpGanho =
-      Math.floor(
-        percentual
-      );
-
-await db.query(`
-UPDATE usuarios
-SET xp = xp + $1
-WHERE id = $2
-`, [xpGanho, req.user.id]);
-
-await db.query(`
-UPDATE usuarios
-SET nivel = FLOOR(xp / 100) + 1
-WHERE id = $1
-`, [req.user.id]);
+    // XP + nível (1 query só)
+    await db.query(`
+      UPDATE usuarios
+      SET 
+        xp = xp + $1,
+        nivel = FLOOR((xp + $1) / 100) + 1
+      WHERE id = $2
+    `, [xpGanho, req.user.id]);
 
     await db.query(`
       INSERT INTO provas(
@@ -2669,30 +2533,22 @@ WHERE id = $1
         percentual,
         questoes
       )
-      VALUES(
-        $1,$2,$3,$4,$5
-      )
+      VALUES ($1,$2,$3,$4,$5)
     `, [
       req.user.id,
       acertos,
       questoes.length,
       percentual,
-      JSON.stringify(
-        questoes
-      )
+      JSON.stringify(questoes)
     ]);
 
     await db.query(`
       UPDATE provas_ativas
-      SET finalizada=TRUE
-      WHERE id=$1
-    `, [
-      prova_id
-    ]);
+      SET finalizada = TRUE
+      WHERE id = $1
+    `, [prova_id]);
 
-    cache.del(
-      `provas_${req.user.id}`
-    );
+    cache.del(`provas_${req.user.id}`);
 
     res.json({
       ok: true,
@@ -2702,11 +2558,7 @@ WHERE id = $1
 
   } catch (err) {
     console.error(err);
-
-    res.status(500).json({
-      error:
-        "Erro salvar prova"
-    });
+    res.status(500).json({ error: "Erro salvar prova" });
   }
 });
 
@@ -2769,61 +2621,39 @@ app.get(
 // RANKING
 // ======================
 app.get("/ranking", auth, async (req, res) => {
-  let query = `
-    SELECT username, xp, nivel
-    FROM usuarios
-  `;
+  try {
+    let query = `
+      SELECT username, xp, nivel
+      FROM usuarios
+    `;
 
-  const params = [];
+    const conditions = [];
+    const params = [];
 
-  if (req.user.role !== "formulavest_master") {
-    query += ` WHERE empresa_id = $1 `;
-    params.push(req.user.empresa_id);
+    if (req.user.role !== "formulavest_master") {
+      conditions.push(`empresa_id = $${params.length + 1}`);
+      params.push(req.user.empresa_id);
+    }
+
+    if (req.user.escola_id) {
+      conditions.push(`escola_id = $${params.length + 1}`);
+      params.push(req.user.escola_id);
+    }
+
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
+    }
+
+    query += " ORDER BY xp DESC LIMIT 50";
+
+    const result = await db.query(query, params);
+
+    res.json({ ranking: result.rows });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ranking" });
   }
-
-  if (req.user.escola_id) {
-    query += ` AND escola_id = $2 `;
-    params.push(req.user.escola_id);
-  }
-
-  query += ` ORDER BY xp DESC LIMIT 50`;
-
-  const result = await db.query(query, params);
-
-  res.json({ ranking: result.rows });
-});
-
-app.get("/exportar-pdf", auth, async (req, res) => {
-  const result = await db.query(`
-    SELECT * FROM provas
-    WHERE usuario_id = $1
-    ORDER BY id DESC
-  `, [req.user.id]);
-
-  const doc = new PDFDocument();
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    "attachment; filename=provas-formulavest.pdf"
-  );
-
-  doc.pipe(res);
-
-  doc.fontSize(20).text("FórmulaVest - Histórico", {
-    align: "center"
-  });
-
-  doc.moveDown();
-
-  result.rows.forEach((p, i) => {
-    doc.fontSize(14).text(`Prova ${i + 1}`);
-    doc.text(`Acertos: ${p.acertos}/${p.total}`);
-    doc.text(`Percentual: ${p.percentual.toFixed(1)}%`);
-    doc.moveDown();
-  });
-
-  doc.end();
 });
 
 // ======================
