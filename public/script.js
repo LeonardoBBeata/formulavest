@@ -109,7 +109,10 @@ function configurarBotoes() {
   document.getElementById("finalizar-enem-btn").onclick = salvarResultado;
   document.getElementById("finalizar-provao-btn").onclick = salvarResultado;
 
-  document.getElementById("enviar-redacao").onclick = corrigirRedacao;
+ const btnRedacao = document.getElementById("enviar-redacao");
+if (btnRedacao) {
+  btnRedacao.onclick = corrigirRedacao;
+}
 }
 
 // ======================
@@ -189,6 +192,33 @@ function selecionar(index, letra, el) {
     a.classList.add(a === el ? "correct" : "wrong");
   });
 }
+
+
+async function corrigirRedacao() {
+  const tema = document.getElementById("tema-redacao").value;
+  const texto = document.getElementById("texto-redacao").value;
+
+  const res = await fetch(`${API}/corrigir-redacao`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ tema, texto })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error || "Erro ao corrigir redação");
+    return;
+  }
+
+  alert(
+    `Nota total: ${data.nota_total}\n\nFeedback:\n${data.feedback}`
+  );
+}
+
 
 // ======================
 // FINALIZAR
@@ -301,20 +331,24 @@ document.getElementById("foto-input").addEventListener("change", function () {
 
 async function salvarPerfil() {
   const res = await fetch(`${API}/atualizar-perfil`, {
-    method: "POST",
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
+      "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify(perfil)
   });
 
   const data = await res.json();
 
+  if (!res.ok) {
+    alert(data.error || "Erro ao atualizar perfil");
+    return;
+  }
+
   alert("Perfil atualizado!");
   fecharPerfil();
 }
-
 // ======================
 // RESTO (mantém igual)
 // ======================
