@@ -1001,6 +1001,36 @@ app.post(
     }
   }
 );
+
+
+
+app.post("/add-xp", auth, async (req, res) => {
+  try {
+    const { xp } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+
+    user.xp = (user.xp || 0) + xp;
+
+    const novoNivel = Math.floor(user.xp / 100) + 1;
+
+    if (!user.nivel) user.nivel = 1;
+
+    user.nivel = novoNivel;
+
+    await user.save();
+
+    return res.json({
+      xp: user.xp,
+      nivel: user.nivel
+    });
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Erro ao adicionar XP" });
+  }
+});
 // ======================
 // ADMIN CHECK
 // ======================
