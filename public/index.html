@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <link rel="icon" type="image/png" href="/favicon.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>FórmulaVest</title>
 
   <link rel="stylesheet" href="style.css">
@@ -14,12 +12,14 @@
 
 <body>
 
-<div id="timer-bar">
-  ⏱ Tempo restante: <span id="timer">03:00:00</span>
+<!-- TIMER -->
+<div id="timer-bar" style="display:none;">
+  ⏱ Tempo restante: <span id="timer">00:00:00</span>
 </div>
 
 <div class="app-container">
 
+  <!-- SIDEBAR -->
   <aside class="sidebar">
     <h2>🎓 FórmulaVest</h2>
 
@@ -32,99 +32,87 @@
       <li data-section="redacao">Redação</li>
     </ul>
 
-    <button id="logout-btn" class="btn-red">Logout</button>
+    <button id="logout-btn">Logout</button>
   </aside>
 
+  <!-- MAIN -->
   <main class="main-content">
 
+    <!-- ENEM -->
     <section id="enem" class="section">
       <h1>📘 Simulado ENEM</h1>
 
       <div class="card">
-        <p>Gere uma prova estilo ENEM.</p>
         <button id="gerar-enem-btn">Gerar ENEM</button>
       </div>
 
       <div id="enem-container"></div>
 
-      <button id="finalizar-enem-btn" class="hidden success-btn">Finalizar</button>
+      <button id="finalizar-enem-btn" class="hidden">
+        Finalizar ENEM
+      </button>
     </section>
 
+    <!-- PROVÃO -->
     <section id="provao" class="section hidden">
       <h1>📗 Provão Paulista</h1>
 
       <div class="card">
-        <p>Gere uma prova estilo Provão Paulista.</p>
         <button id="gerar-provao-btn">Gerar Provão</button>
       </div>
 
       <div id="provao-container"></div>
 
-      <button id="finalizar-provao-btn" class="hidden success-btn">Finalizar</button>
+      <button id="finalizar-provao-btn" class="hidden">
+        Finalizar Provão
+      </button>
     </section>
 
+    <!-- DASHBOARD -->
     <section id="dashboard" class="section hidden">
       <h1>📊 Dashboard</h1>
 
       <div id="dashboard-container"></div>
 
-      <div class="duo-dashboard">
-        <div class="duo-header">
-          <h2>🔥 Seu progresso</h2>
+      <div>
+        <h2>Nível: <span id="nivel-user">1</span></h2>
+        <p>XP: <span id="xp-total">0</span></p>
 
-          <div class="level-box">
-            <span>Nível</span>
-            <h1 id="nivel-user">1</h1>
-          </div>
+        <div style="width:100%; background:#ddd;">
+          <div id="xp-bar-fill" style="height:10px;width:0;background:green;"></div>
         </div>
 
-        <div class="duo-xp">
-          <p>XP Total</p>
-          <h2 id="xp-total">0</h2>
+        <small id="xp-next"></small>
 
-          <div class="xp-bar">
-            <div id="xp-bar-fill"></div>
-          </div>
-
-          <small id="xp-next"></small>
-        </div>
-
-        <div class="duo-streak">
-          <h3>🔥 Streak</h3>
-          <p id="streak-days">0 dias seguidos</p>
-        </div>
-
-        <div id="xp-popup" class="xp-popup hidden"></div>
+        <p id="streak-days"></p>
       </div>
 
-      <div class="evolucao-box">
-        <h2>📈 Evolução XP</h2>
-        <canvas id="graficoEvolucao"></canvas>
-      </div>
+      <canvas id="graficoEvolucao"></canvas>
+
+      <div id="xp-popup" class="hidden"></div>
     </section>
 
+    <!-- RANKING -->
     <section id="ranking" class="section hidden">
-      <h1>🏆 Ranking Geral</h1>
+      <h1>🏆 Ranking</h1>
 
-      <div class="ranking-box">
-        <div id="top3" class="ranking-top3"></div>
-        <div id="ranking-list"></div>
-      </div>
+      <div id="top3"></div>
+      <div id="ranking-list"></div>
     </section>
 
+    <!-- PERFIL -->
     <section id="perfil" class="section hidden">
       <h1>👤 Perfil</h1>
 
       <div id="perfil-container"></div>
-
-      <button id="exportar-pdf-btn" class="success-btn">📄 Exportar PDF das Provas</button>
     </section>
 
+    <!-- REDAÇÃO -->
     <section id="redacao" class="section hidden">
       <h1>✍️ Redação ENEM</h1>
 
-      <input id="tema-redacao" placeholder="Tema da redação">
-      <textarea id="texto-redacao" placeholder="Digite sua redação..."></textarea>
+      <input id="tema-redacao" placeholder="Tema">
+      <textarea id="texto-redacao" placeholder="Sua redação..."></textarea>
 
       <button id="enviar-redacao">Corrigir redação</button>
 
@@ -134,11 +122,14 @@
   </main>
 </div>
 
-<div id="final-screen" class="final-screen hidden">
-  <div class="final-box">
-    <h1>📊 Resultado</h1>
-    <div id="final-text"></div>
-    <button onclick="fecharFinal()">Fechar</button>
+<!-- FINAL SCREEN -->
+<div id="final-screen" class="hidden">
+  <div>
+    <h1>Resultado</h1>
+    <p id="final-text"></p>
+    <button onclick="document.getElementById('final-screen').classList.add('hidden')">
+      Fechar
+    </button>
   </div>
 </div>
 
