@@ -1813,33 +1813,6 @@ app.get("/me", auth, async (req, res) => {
   }
 });
 
-      // fallback de foto padrão
-if (!user.foto) {
-  user.foto = "/default.png";
-}
-
-      return res.json({
-        id: user.id,
-        nome: user.username, // já pronto pro frontend
-        username: user.username,
-        email: user.email,
-        foto: user.foto,
-        role: user.role,
-        empresa_id: user.empresa_id,
-        escola_id: user.escola_id,
-        sala_id: user.sala_id,
-        xp: user.xp || 0,
-        nivel: user.nivel || 1
-      });
-
-     catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro ao buscar usuário" });
-    }
-  }
-);
-
-
 app.post("/upload-foto", auth, upload.single("foto"), async (req, res) => {
   try {
     if (!req.file) {
