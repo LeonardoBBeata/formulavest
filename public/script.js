@@ -413,37 +413,60 @@ async function carregarDashboard() {
 }
 
 async function carregarRanking() {
-  const res =
-    await fetch(
-      `${API}/ranking`
+  try {
+    const token = localStorage.getItem("token");
+
+    // se não tiver token, para
+    if (!token) {
+      console.log("Usuário não logado");
+      return;
+    }
+
+    const res = await fetch(
+      "https://formulavest.onrender.com/ranking",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
     );
 
-  const data =
-    await res.json();
+    const data = await res.json();
 
-  const div =
-    document.getElementById(
-      "ranking-container"
+    // se der erro da API (401, 403, etc)
+    if (!res.ok) {
+      console.log("Erro:", data.error);
+      return;
+    }
+
+    // garante que ranking existe
+    if (!data.ranking || !Array.isArray(data.ranking)) {
+      console.log("Ranking inválido");
+      return;
+    }
+
+    const lista = document.getElementById("ranking");
+    if (!lista) return;
+
+    lista.innerHTML = "";
+
+    data.ranking.forEach((user, i) => {
+      lista.innerHTML += `
+        <div class="ranking-item">
+          <b>#${i + 1}</b>
+          ${user.username}
+          - XP: ${user.xp}
+          - Nível: ${user.nivel}
+        </div>
+      `;
+    });
+
+  } catch (err) {
+    console.error(
+      "Erro ao carregar ranking:",
+      err
     );
-
-  div.innerHTML =
-    data.ranking.map(
-      (u, i) => `
-      <div class="card">
-        <h3>
-          #${i + 1}
-          ${u.username}
-        </h3>
-        <p>
-          XP: ${u.xp}
-        </p>
-        <p>
-          Nível:
-          ${u.nivel}
-        </p>
-      </div>
-    `
-    ).join("");
+  }
 }
 
 async function corrigirRedacao() {
