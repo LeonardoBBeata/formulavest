@@ -70,13 +70,31 @@ async function carregarDashboard() {
 
   const data = await res.json();
 
+  const provas = data.provas || [];
+
+  const total = provas.length;
+
+  const media =
+    total > 0
+      ? (provas.reduce((a, p) => a + p.acertos, 0) / total).toFixed(1)
+      : 0;
+
+  const melhor =
+    total > 0
+      ? Math.max(...provas.map(p => p.acertos))
+      : 0;
+
   el("dashboard-container").innerHTML = `
     <div class="card">
-      <p>Total de provas: ${data.total_provas || 0}</p>
-      <p>Média de acertos: ${data.media_acertos || 0}%</p>
-      <p>Melhor score: ${data.melhor_score || 0}</p>
+      <p>Total de provas: ${total}</p>
+      <p>Média de acertos: ${media}</p>
+      <p>Melhor score: ${melhor}</p>
     </div>
   `;
+
+  // nível e xp REAL
+  el("nivel-user").innerText = data.user.nivel;
+  el("xp-total").innerText = data.user.xp;
 }
 
 // ======================
@@ -107,11 +125,16 @@ async function carregarRanking() {
 // GRÁFICO SIMPLES (EVOLUÇÃO DE ACERTOS)
 // ======================
 async function carregarGrafico() {
-  const res = await fetch(`${API}/grafico`, {
+  const res = await fetch(`${API}/dashboard`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
   const data = await res.json();
+
+  const provas = data.provas || [];
+
+  const labels = provas.map((_, i) => `Prova ${i + 1}`);
+  const acertos = provas.map(p => p.acertos);
 
   const ctx = el("graficoEvolucao");
   if (!ctx) return;
@@ -121,22 +144,21 @@ async function carregarGrafico() {
   grafico = new Chart(ctx, {
     type: "line",
     data: {
-      labels: data.provas, // ex: ["Prova 1", "Prova 2"]
+      labels,
       datasets: [{
         label: "Acertos por prova",
-        data: data.acertos, // ex: [12, 18, 15]
+        data: acertos,
         borderWidth: 2,
         tension: 0.3
       }]
     },
     options: {
-      plugins: {
-        legend: { display: true }
-      },
       scales: {
         y: {
           beginAtZero: true,
-          precision: 0
+          ticks: {
+            precision: 0
+          }
         }
       }
     }
