@@ -50,8 +50,6 @@ const upload = multer({
   }
 });
 
-const upload = multer({ storage });
-
 const app = express();
 
 app.set("trust proxy", 1);
