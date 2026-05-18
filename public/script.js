@@ -4,43 +4,33 @@ const token = localStorage.getItem("token");
 if (!token) window.location.href = "/login.html";
 
 // ======================
-// ESTADO GLOBAL
+// STATE
 // ======================
 let questoes = [];
 let provaId = null;
 let respostasUser = {};
 let grafico = null;
 
-let timerInterval = null;
-let tempoRestante = 0;
-
 let xpAtual = 0;
 let nivelAtual = 1;
-
-let rankingData = [];
-let dashboardData = null;
 
 // ======================
 // INIT
 // ======================
 window.addEventListener("DOMContentLoaded", () => {
-  iniciarApp();
-});
-
-function iniciarApp() {
   configurarAbas();
   configurarBotoes();
-  configurarLogoutSafe();
+  configurarLogout();
 
   carregarDashboard();
   carregarRanking();
   carregarGrafico();
   carregarDuolingo();
   atualizarStreak();
-}
+});
 
 // ======================
-// SAFE GET ELEMENT
+// HELPERS
 // ======================
 const el = (id) => document.getElementById(id);
 
@@ -57,13 +47,7 @@ function configurarAbas() {
 
       item.classList.add("active");
 
-      const sec = el(alvo);
-      if (sec) sec.classList.remove("hidden");
-
-      if (alvo !== "enem" && alvo !== "provao") {
-        pararTimer();
-        el("timer-bar")?.classList.add("hidden");
-      }
+      el(alvo)?.classList.remove("hidden");
     });
   });
 }
@@ -82,7 +66,7 @@ function configurarBotoes() {
 }
 
 // ======================
-// DASHBOARD
+// DASHBOARD (FUNCIONAL)
 // ======================
 async function carregarDashboard() {
   try {
@@ -90,24 +74,22 @@ async function carregarDashboard() {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    dashboardData = await res.json();
+    const data = await res.json();
 
-    atualizarDashboardUI();
-  } catch (err) {
-    console.error("Erro dashboard:", err);
+    el("dashboard-container").innerHTML = `
+      <div class="card">
+        <p>Total de provas: ${data.total_provas || 0}</p>
+        <p>Média de acertos: ${data.media_acertos || 0}%</p>
+        <p>Melhor score: ${data.melhor_score || 0}</p>
+      </div>
+    `;
+  } catch (e) {
+    console.error("Dashboard erro:", e);
   }
 }
 
-function atualizarDashboardUI() {
-  if (!dashboardData) return;
-
-  el("total-provas") && (el("total-provas").innerText = dashboardData.total_provas);
-  el("media-acertos") && (el("media-acertos").innerText = dashboardData.media_acertos + "%");
-  el("melhor-score") && (el("melhor-score").innerText = dashboardData.melhor_score);
-}
-
 // ======================
-// RANKING
+// RANKING (TOP 3 + LISTA)
 // ======================
 async function carregarRanking() {
   try {
@@ -115,32 +97,32 @@ async function carregarRanking() {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    rankingData = await res.json();
+    const data = await res.json();
 
-    renderRanking();
-  } catch (err) {
-    console.error("Erro ranking:", err);
+    // TOP 3
+    const top3 = data.slice(0, 3);
+
+    el("top3").innerHTML = top3.map((u, i) => `
+      <div class="card">
+        <h3>${i + 1}º ${u.nome}</h3>
+        <p>${u.xp} XP</p>
+      </div>
+    `).join("");
+
+    // RESTO
+    el("ranking-list").innerHTML = data.map((u, i) => `
+      <div>
+        ${i + 1} - ${u.nome} | ${u.xp} XP
+      </div>
+    `).join("");
+
+  } catch (e) {
+    console.error("Ranking erro:", e);
   }
 }
 
-function renderRanking() {
-  const container = el("ranking-list");
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  rankingData.forEach((user, i) => {
-    container.innerHTML += `
-      <div class="ranking-item">
-        <b>${i + 1}º</b> - ${user.nome}
-        <span>${user.xp} XP</span>
-      </div>
-    `;
-  });
-}
-
 // ======================
-// GRÁFICO (Chart.js)
+// GRÁFICO (CORRIGIDO PRO TEU HTML)
 // ======================
 async function carregarGrafico() {
   try {
@@ -150,36 +132,27 @@ async function carregarGrafico() {
 
     const data = await res.json();
 
-    renderGrafico(data);
-  } catch (err) {
-    console.error("Erro gráfico:", err);
-  }
-}
+    const ctx = el("graficoEvolucao");
 
-function renderGrafico(data) {
-  const ctx = el("grafico");
+    if (!ctx) return;
 
-  if (!ctx) return;
+    if (grafico) grafico.destroy();
 
-  if (grafico) grafico.destroy();
-
-  grafico = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: data.labels,
-      datasets: [{
-        label: "Acertos",
-        data: data.valores,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true }
+    grafico = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: "Acertos",
+          data: data.valores,
+          borderWidth: 2
+        }]
       }
-    }
-  });
+    });
+
+  } catch (e) {
+    console.error("Grafico erro:", e);
+  }
 }
 
 // ======================
@@ -198,7 +171,6 @@ async function gerarEnem() {
   respostasUser = {};
 
   renderProva(data.questoes, "enem-container", "finalizar-enem-btn");
-  iniciarTimer(data.questoes.length);
 }
 
 async function gerarProvao() {
@@ -214,7 +186,6 @@ async function gerarProvao() {
   respostasUser = {};
 
   renderProva(data.questoes, "provao-container", "finalizar-provao-btn");
-  iniciarTimer(data.questoes.length);
 }
 
 // ======================
@@ -222,23 +193,18 @@ async function gerarProvao() {
 // ======================
 function renderProva(lista, containerId, btnFinalizar) {
   const container = el(containerId);
-  if (!container) return;
-
   container.innerHTML = "";
 
   lista.forEach((q, i) => {
     container.innerHTML += `
       <div class="questao">
-        <p><b>Questão ${i + 1}</b></p>
-        <p>${q.enunciado}</p>
+        <p><b>Q${i + 1}</b> ${q.enunciado}</p>
 
-        <div class="alternativas">
-          ${Object.entries(q.opcoes).map(([l, t]) => `
-            <div class="alternativa" onclick="selecionar(${i}, '${l}', this)">
-              ${l}) ${t}
-            </div>
-          `).join("")}
-        </div>
+        ${Object.entries(q.opcoes).map(([l, t]) => `
+          <div onclick="selecionar(${i}, '${l}', this)">
+            ${l}) ${t}
+          </div>
+        `).join("")}
       </div>
     `;
   });
@@ -254,11 +220,11 @@ function selecionar(index, letra, elClicked) {
 
   respostasUser[index] = letra;
 
-  const all = elClicked.parentElement.querySelectorAll(".alternativa");
+  const all = elClicked.parentElement.querySelectorAll("div");
 
   all.forEach(a => {
     a.onclick = null;
-    a.classList.add(a === elClicked ? "correct" : "wrong");
+    a.style.opacity = a === elClicked ? "1" : "0.4";
   });
 }
 
@@ -282,14 +248,12 @@ async function salvarResultado() {
 
   const data = await res.json();
 
-  pararTimer();
+  el("final-screen").classList.remove("hidden");
 
-  animarXP?.(data.acertos * 10);
-
-  el("finalizar-enem-btn")?.classList.add("hidden");
-  el("finalizar-provao-btn")?.classList.add("hidden");
-
-  mostrarFinal(data);
+  el("final-text").innerHTML = `
+    <p>Acertos: ${data.acertos}</p>
+    <p>Percentual: ${data.percentual.toFixed(1)}%</p>
+  `;
 
   carregarDashboard();
   carregarRanking();
@@ -297,53 +261,25 @@ async function salvarResultado() {
 }
 
 // ======================
-// TIMER
+// REDAÇÃO
 // ======================
-function iniciarTimer(qtd) {
-  pararTimer();
+async function corrigirRedacao() {
+  const tema = el("tema-redacao").value;
+  const texto = el("texto-redacao").value;
 
-  tempoRestante = qtd * 2 * 60;
+  const res = await fetch(`${API}/corrigir-redacao`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ tema, texto })
+  });
 
-  el("timer-bar")?.classList.remove("hidden");
+  const data = await res.json();
 
-  atualizarTimer();
-
-  timerInterval = setInterval(() => {
-    tempoRestante--;
-    atualizarTimer();
-
-    if (tempoRestante <= 0) {
-      pararTimer();
-      salvarResultado();
-    }
-  }, 1000);
-}
-
-function pararTimer() {
-  clearInterval(timerInterval);
-}
-
-function atualizarTimer() {
-  const t = el("timer");
-  if (!t) return;
-
-  const h = String(Math.floor(tempoRestante / 3600)).padStart(2, "0");
-  const m = String(Math.floor((tempoRestante % 3600) / 60)).padStart(2, "0");
-  const s = String(tempoRestante % 60).padStart(2, "0");
-
-  t.innerText = `${h}:${m}:${s}`;
-}
-
-// ======================
-// FINAL SCREEN
-// ======================
-function mostrarFinal(data) {
-  el("final-screen")?.classList.remove("hidden");
-
-  el("final-text") && (el("final-text").innerHTML = `
-    <p>Acertos: ${data.acertos}</p>
-    <p>Percentual: ${data.percentual.toFixed(1)}%</p>
-  `);
+  el("feedback-redacao").innerText =
+    `Nota: ${data.nota_total}\n${data.feedback}`;
 }
 
 // ======================
@@ -359,15 +295,10 @@ async function carregarDuolingo() {
   xpAtual = user.xp || 0;
   nivelAtual = user.nivel || 1;
 
-  atualizarUI();
-}
+  el("xp-total").innerText = xpAtual;
+  el("nivel-user").innerText = nivelAtual;
 
-function atualizarUI() {
-  const xpNivel = xpAtual % 100;
-
-  el("xp-total") && (el("xp-total").innerText = xpAtual);
-  el("nivel-user") && (el("nivel-user").innerText = nivelAtual);
-  el("xp-bar-fill") && (el("xp-bar-fill").style.width = `${xpNivel}%`);
+  el("xp-bar-fill").style.width = `${xpAtual % 100}%`;
 }
 
 // ======================
@@ -375,13 +306,15 @@ function atualizarUI() {
 // ======================
 function atualizarStreak() {
   const streak = Number(localStorage.getItem("streak") || 0);
-  el("streak-days") && (el("streak-days").innerText = `${streak} dias 🔥`);
+  el("streak-days").innerText = `${streak} dias 🔥`;
 }
 
 // ======================
-// PLACEHOLDERS (evita crash)
+// LOGOUT
 // ======================
-function configurarLogoutSafe() {}
-function carregarRankingSafe() {}
-function carregarDashboardSafe() {}
-function carregarGraficoSafe() {}
+function configurarLogout() {
+  el("logout-btn")?.addEventListener("click", () => {
+    localStorage.removeItem("token");
+    window.location.href = "/login.html";
+  });
+}
