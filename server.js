@@ -213,7 +213,7 @@ DEFAULT 'aluno'
 }
 async function criarAdmMaster() {
   try {
-    const email = "adm@formulavest";
+    const email = "adm@formulavest.com";
     const senha = "158575";
 
     const existe = await db.query(`
@@ -227,6 +227,16 @@ async function criarAdmMaster() {
       return;
     }
 
+    // cria empresa principal
+    const empresa = await db.query(`
+      INSERT INTO empresas(nome)
+      VALUES('FórmulaVest')
+      RETURNING id
+    `);
+
+    const empresaId =
+      empresa.rows[0].id;
+
     const hash =
       await bcrypt.hash(
         senha,
@@ -239,16 +249,18 @@ async function criarAdmMaster() {
         email,
         senha,
         role,
+        empresa_id,
         verificado
       )
       VALUES(
-        $1,$2,$3,$4,TRUE
+        $1,$2,$3,$4,$5,TRUE
       )
     `, [
       "ADM",
       email,
       hash,
-      "empresa_admin"
+      "formulavest_master",
+      empresaId
     ]);
 
     console.log(
@@ -650,7 +662,7 @@ app.post('/login-iniciar', async (req, res) => {
     // ADM MASTER -> pula código
     if (
       user.email.toLowerCase() ===
-      'adm@formulavest'
+      'adm@formulavest.com'
     ) {
       return res.json({
         ok: true,
@@ -738,7 +750,7 @@ app.post('/login-confirmar', async (req, res) => {
     // só exige código se NÃO for ADM
     if (
       user.email.toLowerCase() !==
-      'adm@formulavest'
+      'adm@formulavest.com'
     ) {
       if (
         user.codigo_verificacao !==
@@ -901,6 +913,7 @@ app.get(
   "/admin-check",
   auth,
   permitir(
+    "formulavest_master",
     "empresa_admin",
     "diretor",
     "coordenador"
@@ -920,47 +933,67 @@ app.get(
   "/admin/provas",
   auth,
   permitir(
+    "formulavest_master",
     "empresa_admin",
     "diretor",
     "coordenador"
   ),
   async (req, res) => {
     try {
-
       let result;
 
+      // MASTER vê tudo
       if (
+        req.user.role ===
+        "formulavest_master"
+      ) {
+        result =
+          await db.query(`
+            SELECT
+              p.*,
+              u.username
+            FROM provas p
+            JOIN usuarios u
+            ON u.id = p.usuario_id
+            ORDER BY p.id DESC
+          `);
+
+      // EMPRESA
+      } else if (
         req.user.role ===
         "empresa_admin"
       ) {
-        result = await db.query(`
-          SELECT
-            p.*,
-            u.username
-          FROM provas p
-          JOIN usuarios u
-          ON u.id=p.usuario_id
-          WHERE
-            u.empresa_id=$1
-          ORDER BY p.id DESC
-        `, [
-          req.user.empresa_id
-        ]);
+        result =
+          await db.query(`
+            SELECT
+              p.*,
+              u.username
+            FROM provas p
+            JOIN usuarios u
+            ON u.id = p.usuario_id
+            WHERE
+              u.empresa_id=$1
+            ORDER BY p.id DESC
+          `, [
+            req.user.empresa_id
+          ]);
 
+      // ESCOLA
       } else {
-        result = await db.query(`
-          SELECT
-            p.*,
-            u.username
-          FROM provas p
-          JOIN usuarios u
-          ON u.id=p.usuario_id
-          WHERE
-            u.escola_id=$1
-          ORDER BY p.id DESC
-        `, [
-          req.user.escola_id
-        ]);
+        result =
+          await db.query(`
+            SELECT
+              p.*,
+              u.username
+            FROM provas p
+            JOIN usuarios u
+            ON u.id = p.usuario_id
+            WHERE
+              u.escola_id=$1
+            ORDER BY p.id DESC
+          `, [
+            req.user.escola_id
+          ]);
       }
 
       res.json({
@@ -985,7 +1018,9 @@ app.get(
 app.post(
   "/admin/criar-empresa",
   auth,
-  permitir("empresa_admin"),
+  permitir(
+    "formulavest_master"
+  ),
   async (req, res) => {
     try {
       const {
@@ -1102,6 +1137,7 @@ app.get(
   "/admin/usuarios",
   auth,
   permitir(
+    "formulavest_master",
     "empresa_admin",
     "diretor",
     "coordenador"
@@ -1110,53 +1146,63 @@ app.get(
     try {
       let result;
 
+      // MASTER vê tudo
       if (
+        req.user.role ===
+        "formulavest_master"
+      ) {
+        result =
+          await db.query(`
+            SELECT *
+            FROM usuarios
+            ORDER BY id DESC
+          `);
+
+      // ADMIN DA EMPRESA
+      } else if (
         req.user.role ===
         "empresa_admin"
       ) {
-        result = await db.query(`
-          SELECT *
-          FROM usuarios
-          WHERE empresa_id=$1
-        `, [
-          req.user.empresa_id
-        ]);
+        result =
+          await db.query(`
+            SELECT *
+            FROM usuarios
+            WHERE empresa_id=$1
+            ORDER BY id DESC
+          `, [
+            req.user.empresa_id
+          ]);
 
+      // DIRETOR
       } else if (
         req.user.role ===
         "diretor"
       ) {
-        result = await db.query(`
-          SELECT *
-          FROM usuarios
-          WHERE escola_id=$1
-        `, [
-          req.user.escola_id
-        ]);
+        result =
+          await db.query(`
+            SELECT *
+            FROM usuarios
+            WHERE escola_id=$1
+            ORDER BY id DESC
+          `, [
+            req.user.escola_id
+          ]);
 
-      } else if (
-        req.user.role ===
-        "coordenador"
-      ) {
-        result = await db.query(`
-          SELECT *
-          FROM usuarios
-          WHERE escola_id=$1
-          AND role IN (
-            'professor',
-            'aluno'
-          )
-        `, [
-          req.user.escola_id
-        ]);
-
+      // COORDENADOR
       } else {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Sem permissão"
-          });
+        result =
+          await db.query(`
+            SELECT *
+            FROM usuarios
+            WHERE escola_id=$1
+            AND role IN (
+              'professor',
+              'aluno'
+            )
+            ORDER BY id DESC
+          `, [
+            req.user.escola_id
+          ]);
       }
 
       res.json({
@@ -1169,12 +1215,11 @@ app.get(
 
       res.status(500).json({
         error:
-          "Erro listar"
+          "Erro listar usuários"
       });
     }
   }
 );
-
 // ======================
 // ADMIN CRIAR USUÁRIO
 // ======================
@@ -1182,6 +1227,7 @@ app.post(
   "/admin/criar-usuario",
   auth,
   permitir(
+    "formulavest_master",
     "empresa_admin",
     "diretor",
     "coordenador"
@@ -1194,8 +1240,24 @@ app.post(
         senha,
         role,
         escola_id,
-        sala_id
+        sala_id,
+        empresa_id
       } = req.body;
+
+      // só MASTER pode criar empresa_admin
+      if (
+        role ===
+        "empresa_admin" &&
+        req.user.role !==
+        "formulavest_master"
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Sem permissão"
+          });
+      }
 
       const hash =
         await bcrypt.hash(
@@ -1209,20 +1271,34 @@ app.post(
       let novaEscola =
         escola_id;
 
+      // MASTER pode escolher empresa
       if (
-        req.user.role === "diretor"
+        req.user.role ===
+        "formulavest_master"
+      ) {
+        empresaId =
+          empresa_id;
+      }
+
+      // diretor preso à escola dele
+      if (
+        req.user.role ===
+        "diretor"
       ) {
         novaEscola =
           req.user.escola_id;
       }
 
+      // coordenador só cria professor/aluno
       if (
         req.user.role ===
         "coordenador"
       ) {
         if (
-          role !== "professor" &&
-          role !== "aluno"
+          role !==
+            "professor" &&
+          role !==
+            "aluno"
         ) {
           return res
             .status(403)
@@ -1244,10 +1320,11 @@ app.post(
           role,
           empresa_id,
           escola_id,
-          sala_id
+          sala_id,
+          verificado
         )
         VALUES(
-          $1,$2,$3,$4,$5,$6,$7
+          $1,$2,$3,$4,$5,$6,$7,TRUE
         )
       `, [
         username,
@@ -1445,45 +1522,64 @@ app.get(
   "/admin/stats",
   auth,
   permitir(
+    "formulavest_master",
     "empresa_admin",
     "diretor",
     "coordenador"
   ),
   async (req, res) => {
     try {
-
       let result;
 
+      // MASTER vê tudo
       if (
+        req.user.role ===
+        "formulavest_master"
+      ) {
+        result =
+          await db.query(`
+            SELECT
+              u.username,
+              p.acertos
+            FROM provas p
+            JOIN usuarios u
+            ON u.id = p.usuario_id
+          `);
+
+      // EMPRESA
+      } else if (
         req.user.role ===
         "empresa_admin"
       ) {
-        result = await db.query(`
-          SELECT
-            u.username,
-            p.acertos
-          FROM provas p
-          JOIN usuarios u
-          ON u.id=p.usuario_id
-          WHERE
-            u.empresa_id=$1
-        `, [
-          req.user.empresa_id
-        ]);
+        result =
+          await db.query(`
+            SELECT
+              u.username,
+              p.acertos
+            FROM provas p
+            JOIN usuarios u
+            ON u.id = p.usuario_id
+            WHERE
+              u.empresa_id=$1
+          `, [
+            req.user.empresa_id
+          ]);
 
+      // ESCOLA
       } else {
-        result = await db.query(`
-          SELECT
-            u.username,
-            p.acertos
-          FROM provas p
-          JOIN usuarios u
-          ON u.id=p.usuario_id
-          WHERE
-            u.escola_id=$1
-        `, [
-          req.user.escola_id
-        ]);
+        result =
+          await db.query(`
+            SELECT
+              u.username,
+              p.acertos
+            FROM provas p
+            JOIN usuarios u
+            ON u.id = p.usuario_id
+            WHERE
+              u.escola_id=$1
+          `, [
+            req.user.escola_id
+          ]);
       }
 
       const provas =
