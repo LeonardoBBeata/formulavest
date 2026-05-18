@@ -429,13 +429,14 @@ app.post('/register', async (req, res) => {
         // salvar usuário no banco
         await db.query(
             `
-            INSERT INTO usuarios (
-                username,
-                email,
-                senha,
-                codigo_verificacao
-            )
-            VALUES ($1, $2, $3, $4)
+INSERT INTO usuarios (
+  username,
+  email,
+  senha,
+  codigo_verificacao,
+  verificado
+)
+VALUES ($1,$2,$3,$4,FALSE)
             `,
             [
                 username,
@@ -567,6 +568,11 @@ app.post('/login-iniciar', async (req,res)=>{
     const user = result.rows[0];
 
     if(!user){
+        if (user.banido) {
+  return res.status(403).json({
+    error: "Usuário banido"
+  });
+}
       return res.status(404).json({
         error:'Email não encontrado'
       });
@@ -688,48 +694,51 @@ app.post("/login-confirmar", async (req, res) => {
   }
 });
 
-app.post(
-'/forgot-password',
-async (req,res)=>{
-  try{
-    const { email } =
-      req.body;
+app.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
 
-    const token =
-      jwt.sign(
-        { email },
-        process.env.JWT_SECRET,
-        {
-          expiresIn:'1h'
-        }
-      );
+    const result = await db.query(`
+      SELECT id
+      FROM usuarios
+      WHERE email = $1
+    `, [email]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Email não encontrado'
+      });
+    }
+
+    const token = jwt.sign(
+      { email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
 
     const link =
-`https://formulavest.onrender.com/reset-password.html?token=${token}`;
+      `https://formulavest.onrender.com/reset-password.html?token=${token}`;
 
     await enviarEmail(
-  email,
-  "Recuperar senha - FórmulaVest",
-  `Acesse: ${link}`,
-  `
-    <h2>Recuperar senha</h2>
-    <p>Clique abaixo:</p>
-    <a href="${link}">
-      Alterar senha
-    </a>
-  `
-);
+      email,
+      "Recuperar senha - FórmulaVest",
+      `Acesse: ${link}`,
+      `
+      <h2>Recuperar senha</h2>
+      <p>Clique abaixo:</p>
+      <a href="${link}">Alterar senha</a>
+      `
+    );
 
     res.json({
-      message:
-        'Link enviado'
+      message: "Link enviado"
     });
 
-  }catch(err){
-    console.log(err);
+  } catch (err) {
+    console.error(err);
 
     res.status(500).json({
-      error:'Erro'
+      error: "Erro"
     });
   }
 });
@@ -1004,6 +1013,11 @@ app.post(
 app.get(
   "/admin/usuarios",
   auth,
+  permitir(
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
   async (req, res) => {
     try {
       let result;
@@ -1177,6 +1191,11 @@ app.post(
 app.put(
   "/admin/usuario/:id/banir",
   auth,
+  permitir(
+    "empresa_admin",
+    "diretor",
+    "coordenador"
+  ),
   async (req, res) => {
     try {
       const id =
@@ -1241,6 +1260,10 @@ app.put(
 app.delete(
   "/admin/usuario/:id",
   auth,
+  permitir(
+    "empresa_admin",
+    "diretor"
+  ),
   async (req, res) => {
     try {
       const id =
@@ -1733,13 +1756,11 @@ app.post('/salvar-prova', auth, async (req, res) => {
       );
 
     await db.query(`
-      UPDATE usuarios
-      SET xp = xp + $1,
-          nivel =
-          FLOOR(
-            (xp + $1)/100
-          ) + 1
-      WHERE id = $2
+UPDATE usuarios
+SET
+  xp = xp + $1,
+  nivel = FLOOR((xp + $1) / 100) + 1
+WHERE id = $2
     `, [
       xpGanho,
       req.user.id
@@ -1849,7 +1870,7 @@ app.get(
 // ======================
 // RANKING
 // ======================
-app.get('/ranking', async (_, res) => {
+app.get('/ranking', auth, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT username, xp, nivel
