@@ -1009,26 +1009,32 @@ app.post("/add-xp", auth, async (req, res) => {
     const { xp } = req.body;
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
+    const xpNum = Number(xp || 0);
 
-    user.xp = (user.xp || 0) + xp;
+    await db.query(`
+      UPDATE usuarios
+      SET xp = xp + $1
+      WHERE id = $2
+      RETURNING xp, nivel
+    `, [xpNum, userId]);
 
-    const novoNivel = Math.floor(user.xp / 100) + 1;
+    await db.query(`
+      UPDATE usuarios
+      SET nivel = FLOOR(xp / 100) + 1
+      WHERE id = $1
+    `, [userId]);
 
-    if (!user.nivel) user.nivel = 1;
+    const result = await db.query(`
+      SELECT xp, nivel
+      FROM usuarios
+      WHERE id = $1
+    `, [userId]);
 
-    user.nivel = novoNivel;
-
-    await user.save();
-
-    return res.json({
-      xp: user.xp,
-      nivel: user.nivel
-    });
+    res.json(result.rows[0]);
 
   } catch (err) {
-    console.log(err);
-    return res.status(500).json({ error: "Erro ao adicionar XP" });
+    console.error(err);
+    res.status(500).json({ error: "Erro ao adicionar XP" });
   }
 });
 // ======================
