@@ -121,16 +121,29 @@
         <div id="dashboard-container"></div>
       </section>
 
-      <!-- RANKING -->
-      <section
-        id="ranking"
-        class="section hidden"
-      >
-        <h1>🏆 Ranking</h1>
+     <!-- RANKING -->
+<section class="ranking-box">
+  <div class="ranking-header">
+    <h2>🏆 Ranking Geral</h2>
+    <p>Sua posição entre os melhores</p>
+  </div>
 
-        <div id="ranking-container"></div>
-      </section>
+  <div class="ranking-top3" id="top3"></div>
 
+  <div class="ranking-list" id="ranking"></div>
+</section>
+
+<!-- EVOLUÇÃO -->
+<section class="evolucao-box">
+  <div class="ranking-header">
+    <h2>📈 Sua evolução</h2>
+    <p>XP acumulado nas provas</p>
+  </div>
+
+  <canvas id="graficoEvolucao"></canvas>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       <!-- REDAÇÃO -->
       <section
         id="redacao"
