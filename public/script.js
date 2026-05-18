@@ -8,15 +8,15 @@ let provaId = null;
 let grafico = null;
 
 let respostasUser = {};
-let tempo = 180 * 60; // 3h ENEM
+let tempo = 180 * 60;
 
 let xpAtual = 0;
 let nivelAtual = 1;
 
-/* ======================
-   INIT
-====================== */
-window.addEventListener("DOMContentLoaded", iniciarApp);
+/* INIT */
+window.addEventListener("DOMContentLoaded", () => {
+  iniciarApp();
+});
 
 function iniciarApp() {
   configurarAbas();
@@ -29,17 +29,14 @@ function iniciarApp() {
   iniciarTimer();
 }
 
-/* ======================
-   TIMER ENEM
-====================== */
+/* TIMER */
 function iniciarTimer() {
   setInterval(() => {
-    const h = String(Math.floor(tempo / 3600)).padStart(2, '0');
-    const m = String(Math.floor((tempo % 3600) / 60)).padStart(2, '0');
-    const s = String(tempo % 60).padStart(2, '0');
+    const h = String(Math.floor(tempo / 3600)).padStart(2, "0");
+    const m = String(Math.floor((tempo % 3600) / 60)).padStart(2, "0");
+    const s = String(tempo % 60).padStart(2, "0");
 
-    const el = document.getElementById("timer");
-    if (el) el.innerText = `${h}:${m}:${s}`;
+    document.getElementById("timer").innerText = `${h}:${m}:${s}`;
 
     if (tempo > 0) tempo--;
     else finalizarAutomatico();
@@ -48,25 +45,17 @@ function iniciarTimer() {
 }
 
 function finalizarAutomatico() {
-  if (questoes.length > 0) {
-    salvarResultado();
-    alert("Tempo esgotado! Prova finalizada automaticamente.");
-  }
+  if (questoes.length > 0) salvarResultado();
 }
 
-/* ======================
-   ABAS
-====================== */
+/* ABAS */
 function configurarAbas() {
-  const menuItems = document.querySelectorAll(".sidebar li");
-  const sections = document.querySelectorAll(".section");
-
-  menuItems.forEach(item => {
+  document.querySelectorAll(".sidebar li").forEach(item => {
     item.addEventListener("click", () => {
       const alvo = item.dataset.section;
 
-      menuItems.forEach(i => i.classList.remove("active"));
-      sections.forEach(s => s.classList.add("hidden"));
+      document.querySelectorAll(".sidebar li").forEach(i => i.classList.remove("active"));
+      document.querySelectorAll(".section").forEach(s => s.classList.add("hidden"));
 
       item.classList.add("active");
       document.getElementById(alvo).classList.remove("hidden");
@@ -74,9 +63,7 @@ function configurarAbas() {
   });
 }
 
-/* ======================
-   BOTÕES
-====================== */
+/* BOTÕES */
 function configurarBotoes() {
   document.getElementById("gerar-enem-btn").onclick = gerarEnem;
   document.getElementById("gerar-provao-btn").onclick = gerarProvao;
@@ -85,9 +72,7 @@ function configurarBotoes() {
   document.getElementById("enviar-redacao").onclick = corrigirRedacao;
 }
 
-/* ======================
-   GERAR PROVAS
-====================== */
+/* PROVAS */
 async function gerarEnem() {
   const res = await fetch(`${API}/gerar-enem`, {
     method: "POST",
@@ -95,7 +80,6 @@ async function gerarEnem() {
   });
 
   const data = await res.json();
-  if (!res.ok) return alert(data.error);
 
   provaId = data.prova_id;
   questoes = data.questoes;
@@ -111,7 +95,6 @@ async function gerarProvao() {
   });
 
   const data = await res.json();
-  if (!res.ok) return alert(data.error);
 
   provaId = data.prova_id;
   questoes = data.questoes;
@@ -120,9 +103,7 @@ async function gerarProvao() {
   renderProva(data.questoes, "provao-container", "finalizar-provao-btn");
 }
 
-/* ======================
-   RENDER PROVA (ENHANCED)
-====================== */
+/* RENDER */
 function renderProva(lista, containerId, finalizarId) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
@@ -136,7 +117,6 @@ function renderProva(lista, containerId, finalizarId) {
         <div class="alternativas">
           ${Object.entries(q.opcoes).map(([letra, texto]) => `
             <div class="alternativa" onclick="selecionar(${i}, '${letra}', this)">
-              <input type="radio" name="q${i}">
               <span>${letra}) ${texto}</span>
             </div>
           `).join("")}
@@ -148,33 +128,23 @@ function renderProva(lista, containerId, finalizarId) {
   document.getElementById(finalizarId).classList.remove("hidden");
 }
 
-/* ======================
-   SELEÇÃO (COM FEEDBACK)
-====================== */
+/* SELEÇÃO */
 function selecionar(qIndex, letra, el) {
-  if (respostasUser[qIndex]) return;
+  if (respostasUser[qIndex] !== undefined) return;
 
   respostasUser[qIndex] = letra;
 
-  const alternativas = el.parentElement.querySelectorAll(".alternativa");
+  const todas = el.parentElement.querySelectorAll(".alternativa");
 
-  alternativas.forEach(a => {
+  todas.forEach(a => {
     a.onclick = null;
 
-    const span = a.querySelector("span");
-    const txt = span.innerText;
-
-    if (a === el) {
-      a.classList.add("correct");
-    } else {
-      a.classList.add("wrong");
-    }
+    if (a === el) a.classList.add("correct");
+    else a.classList.add("wrong");
   });
 }
 
-/* ======================
-   SALVAR PROVA
-====================== */
+/* FINALIZAR */
 async function salvarResultado() {
   const respostas = questoes.map((q, i) => ({
     correta: q.correta,
@@ -187,49 +157,40 @@ async function salvarResultado() {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({
-      prova_id: provaId,
-      questoes: respostas
-    })
+    body: JSON.stringify({ prova_id: provaId, questoes: respostas })
   });
 
   const data = await res.json();
-  if (!res.ok) return alert(data.error);
 
   animarXP(data.acertos * 10);
-  atualizarStreak();
 
-  document.querySelectorAll('input').forEach(i => i.disabled = true);
+  document.querySelectorAll("input").forEach(i => i.disabled = true);
 
   document.getElementById("finalizar-enem-btn").classList.add("hidden");
   document.getElementById("finalizar-provao-btn").classList.add("hidden");
 
-  mostrarResultadoFinal(data);
+  mostrarFinal(data);
 
-  await carregarDashboard();
-  await carregarRanking();
-  await carregarGrafico();
+  carregarDashboard();
+  carregarRanking();
+  carregarGrafico();
 }
 
-/* ======================
-   FINAL SCREEN
-====================== */
-function mostrarResultadoFinal(data) {
-  const box = document.getElementById("final-screen");
-  const text = document.getElementById("final-text");
+/* FINAL SCREEN */
+function mostrarFinal(data) {
+  document.getElementById("final-screen").classList.remove("hidden");
 
-  box.classList.remove("hidden");
-
-  text.innerHTML = `
-    <h2>Resultado</h2>
-    <p><b>Acertos:</b> ${data.acertos}</p>
-    <p><b>Percentual:</b> ${data.percentual.toFixed(1)}%</p>
+  document.getElementById("final-text").innerHTML = `
+    <p>Acertos: ${data.acertos}</p>
+    <p>Percentual: ${data.percentual.toFixed(1)}%</p>
   `;
 }
 
-/* ======================
-   XP SYSTEM (TEU ORIGINAL MELHORADO)
-====================== */
+function fecharFinal() {
+  document.getElementById("final-screen").classList.add("hidden");
+}
+
+/* XP */
 async function carregarDuolingo() {
   const res = await fetch(`${API}/me`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -244,13 +205,14 @@ async function carregarDuolingo() {
 }
 
 function atualizarUI() {
-  const xpNivel = xpAtual % 100;
+  const nivel = xpAtual / 100;
 
   document.getElementById("xp-total").innerText = xpAtual;
-  document.getElementById("nivel-user").innerText = nivelAtual;
+  document.getElementById("nivel-user").innerText = Math.floor(nivelAtual);
 
-  document.getElementById("xp-bar-fill").style.width =
-    `${(xpNivel / 100) * 100}%`;
+  const xpNivel = xpAtual % 100;
+
+  document.getElementById("xp-bar-fill").style.width = `${xpNivel}%`;
 
   document.getElementById("xp-next").innerText =
     `${100 - xpNivel} XP para próximo nível`;
@@ -274,15 +236,14 @@ async function animarXP(ganho) {
   });
 
   const data = await res.json();
+
   xpAtual = data.xp;
   nivelAtual = data.nivel;
 
   atualizarUI();
 }
 
-/* ======================
-   STREAK
-====================== */
+/* STREAK */
 function atualizarStreak() {
   const hoje = new Date().toDateString();
   const ultimo = localStorage.getItem("lastStudyDay");
@@ -290,29 +251,23 @@ function atualizarStreak() {
   let streak = Number(localStorage.getItem("streak") || 0);
 
   if (ultimo !== hoje) {
-    const ontem = new Date();
-    ontem.setDate(ontem.getDate() - 1);
+    streak = (ultimo === new Date(Date.now() - 86400000).toDateString()) ? streak + 1 : 1;
 
-    if (ultimo === ontem.toDateString()) streak++;
-    else streak = 1;
-
-    localStorage.setItem("lastStudyDay", hoje);
     localStorage.setItem("streak", streak);
+    localStorage.setItem("lastStudyDay", hoje);
   }
 
-  document.getElementById("streak-days").innerText =
-    `${streak} dias 🔥`;
+  document.getElementById("streak-days").innerText = `${streak} dias 🔥`;
 }
 
-/* ======================
-   DASHBOARD / RANKING / GRAFICO (mantidos)
-====================== */
+/* DASHBOARD */
 async function carregarDashboard() {
   const res = await fetch(`${API}/provas`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
   const data = await res.json();
+
   const div = document.getElementById("dashboard-container");
 
   if (!data.provas?.length) {
@@ -324,7 +279,85 @@ async function carregarDashboard() {
   const media = data.provas.reduce((a, p) => a + p.percentual, 0) / total;
 
   div.innerHTML = `
-    <div class="card"><h3>Total</h3><p>${total}</p></div>
-    <div class="card"><h3>Média</h3><p>${media.toFixed(1)}%</p></div>
+    <div class="card">Total: ${total}</div>
+    <div class="card">Média: ${media.toFixed(1)}%</div>
+  `;
+}
+
+/* RANKING */
+async function carregarRanking() {
+  const res = await fetch(`${API}/ranking`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+
+  const top3 = document.getElementById("top3");
+  const list = document.getElementById("ranking-list");
+
+  top3.innerHTML = data.ranking.slice(0, 3).map((u, i) => `
+    <div class="top-card">${i + 1}º ${u.username} - ${u.xp}</div>
+  `).join("");
+
+  list.innerHTML = data.ranking.map((u, i) => `
+    <div class="ranking-item">${i + 1} - ${u.username} - ${u.xp}</div>
+  `).join("");
+}
+
+/* GRAFICO */
+async function carregarGrafico() {
+  const res = await fetch(`${API}/provas`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const data = await res.json();
+
+  let xp = 0;
+  const labels = [];
+  const valores = [];
+
+  data.provas.reverse().forEach((p, i) => {
+    xp += Math.floor(p.percentual);
+    labels.push("Prova " + (i + 1));
+    valores.push(xp);
+  });
+
+  const ctx = document.getElementById("graficoEvolucao");
+
+  if (grafico) grafico.destroy();
+
+  grafico = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        borderWidth: 3
+      }]
+    }
+  });
+}
+
+/* REDAÇÃO */
+async function corrigirRedacao() {
+  const tema = document.getElementById("tema-redacao").value;
+  const texto = document.getElementById("texto-redacao").value;
+
+  const res = await fetch(`${API}/corrigir-redacao`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ tema, texto })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("feedback-redacao").innerHTML = `
+    <div class="card">
+      <h3>Nota: ${data.nota_total}</h3>
+      <p>${data.feedback}</p>
+    </div>
   `;
 }
