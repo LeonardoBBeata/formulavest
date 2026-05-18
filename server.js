@@ -102,6 +102,14 @@ await db.query(`
   ALTER TABLE usuarios
   ADD COLUMN IF NOT EXISTS banido BOOLEAN DEFAULT FALSE
 `);
+    await db.query(`
+UPDATE usuarios
+SET
+  senha=$1,
+  reset_token=NULL,
+  reset_expira=NULL
+WHERE id=$2
+`, [hash, user.id]);
     
     await db.query(`
   CREATE TABLE IF NOT EXISTS provas_ativas(
@@ -2374,7 +2382,7 @@ app.post('/gerar-enem', auth, async (req, res) => {
     let questoes = [];
     let tentativas = 0;
 
-    while (questoes.length < 10 && tentativas < 20) {
+    while (questoes.length < 10 && tentativas < 5) {
       tentativas++;
 
       try {
