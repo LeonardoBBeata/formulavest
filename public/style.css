@@ -3,9 +3,12 @@
   --sidebar: #0f172a;
   --card: #111c2e;
   --card-2: #0f1a2b;
+
   --text: #e5e7eb;
   --muted: #94a3b8;
+
   --border: #243244;
+
   --primary: #3b82f6;
   --danger: #ef4444;
   --success: #22c55e;
@@ -25,6 +28,7 @@ body {
   font-family: Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
 }
 
 /* ======================
@@ -42,11 +46,15 @@ body {
   width: 260px;
   background: var(--sidebar);
   padding: 25px;
+  border-right: 1px solid var(--border);
+}
+
+.sidebar h2 {
+  margin-bottom: 20px;
 }
 
 .sidebar ul {
   list-style: none;
-  margin-top: 30px;
 }
 
 .sidebar li {
@@ -55,6 +63,7 @@ body {
   cursor: pointer;
   margin-bottom: 10px;
   transition: 0.2s;
+  color: var(--text);
 }
 
 .sidebar li:hover,
@@ -82,16 +91,7 @@ body {
 }
 
 /* ======================
-   DASHBOARD GRID
-====================== */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-}
-
-/* ======================
-   INPUTS
+   INPUTS / BUTTONS
 ====================== */
 input:not([type="radio"]),
 textarea,
@@ -101,14 +101,14 @@ button {
   border-radius: 12px;
   font-size: 16px;
   border: none;
+  outline: none;
 }
 
 input,
 textarea {
   background: var(--card-2);
-  color: white;
+  color: var(--text);
   border: 1px solid var(--border);
-  outline: none;
 }
 
 textarea {
@@ -116,9 +116,6 @@ textarea {
   resize: vertical;
 }
 
-/* ======================
-   BOTÕES
-====================== */
 button {
   background: var(--primary);
   color: white;
@@ -140,7 +137,7 @@ button:hover {
 }
 
 /* ======================
-   QUESTÕES (BEM ORGANIZADAS)
+   QUESTÕES (ENEM STYLE)
 ====================== */
 .questao {
   background: var(--card);
@@ -154,21 +151,23 @@ button:hover {
   gap: 14px;
 }
 
-/* enunciado */
-.questao h3,
-.questao p {
-  font-size: 16px;
-  line-height: 1.5;
+.questao b {
+  color: var(--primary);
 }
 
-/* container alternativas */
+.questao p {
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+/* alternativas container */
 .alternativas {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-/* alternativa estilo botão */
+/* alternativa estilo ENEM */
 .alternativa {
   display: flex;
   align-items: center;
@@ -182,27 +181,47 @@ button:hover {
 
   cursor: pointer;
   transition: 0.2s;
+  user-select: none;
 }
 
 .alternativa:hover {
+  transform: translateY(-2px);
   background: #16243a;
-  transform: translateY(-1px);
 }
 
-.alternativa input[type="radio"] {
+.alternativa input {
   transform: scale(1.2);
+  cursor: pointer;
 }
 
-.alternativa label {
-  cursor: pointer;
+.alternativa span {
   flex: 1;
+}
+
+/* ======================
+   ANIMAÇÕES RESPOSTAS
+====================== */
+.alternativa.selecionada {
+  border: 2px solid var(--primary);
+}
+
+.alternativa.correta {
+  background: var(--success) !important;
+  color: white;
+  border: none;
+}
+
+.alternativa.errada {
+  background: var(--danger) !important;
+  color: white;
+  border: none;
 }
 
 /* ======================
    UTIL
 ====================== */
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 /* ======================
@@ -231,27 +250,6 @@ button:hover {
 }
 
 /* ======================
-   MOBILE
-====================== */
-@media (max-width: 900px) {
-  .sidebar {
-    position: fixed;
-    left: -100%;
-    top: 0;
-    bottom: 0;
-    transition: 0.3s;
-  }
-
-  .sidebar.open {
-    left: 0;
-  }
-
-  .main-content {
-    padding: 20px;
-  }
-}
-
-/* ======================
    RANKING
 ====================== */
 .ranking-box,
@@ -261,15 +259,6 @@ button:hover {
   padding: 25px;
   margin-top: 30px;
   border: 1px solid var(--border);
-}
-
-.ranking-header h2 {
-  margin: 0;
-}
-
-.ranking-header p {
-  color: var(--muted);
-  margin-bottom: 20px;
 }
 
 .ranking-top3 {
@@ -287,18 +276,6 @@ button:hover {
   color: white;
 }
 
-.gold {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-}
-
-.silver {
-  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
-}
-
-.bronze {
-  background: linear-gradient(135deg, #d97706, #92400e);
-}
-
 .ranking-item {
   display: flex;
   justify-content: space-between;
@@ -306,11 +283,6 @@ button:hover {
   border-radius: 12px;
   background: var(--card-2);
   margin-top: 10px;
-  transition: 0.2s;
-}
-
-.ranking-item:hover {
-  transform: translateY(-2px);
 }
 
 .ranking-item.me {
@@ -318,14 +290,14 @@ button:hover {
 }
 
 /* ======================
-   XP / LEVEL SYSTEM (IMPORTANTE)
+   XP SYSTEM
 ====================== */
 .duo-dashboard {
   background: var(--card);
   padding: 20px;
   border-radius: 16px;
-  position: relative;
   border: 1px solid var(--border);
+  position: relative;
 }
 
 .duo-header {
@@ -339,10 +311,6 @@ button:hover {
   background: var(--card-2);
   padding: 10px 16px;
   border-radius: 12px;
-}
-
-.duo-xp {
-  margin-top: 20px;
 }
 
 .xp-bar {
@@ -386,7 +354,7 @@ button:hover {
   100% { transform: scale(1); opacity: 0; }
 }
 
-/* LEVEL UP ANIMATION */
+/* LEVEL UP */
 .level-up {
   animation: levelUp 0.8s ease;
 }
@@ -398,8 +366,32 @@ button:hover {
 }
 
 /* ======================
-   CANVAS CHART
+   TIMER ENEM
 ====================== */
-canvas {
-  max-height: 300px;
+#timer {
+  font-family: monospace;
+  font-size: 18px;
+  color: var(--text);
+}
+
+/* ======================
+   MOBILE
+====================== */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    bottom: 0;
+    transition: 0.3s;
+    z-index: 999;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
 }
